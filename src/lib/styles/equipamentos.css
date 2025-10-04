@@ -1,0 +1,103 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gray);
+}
+
+.page-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  width: 300px;
+}
+.search-bar input {
+  border: none;
+  outline: none;
+  padding: 0.5rem;
+  width: 100%;
+}
+
+.btn {
+  padding: 10px 15px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.3s;
+}
+.btn:hover { background: #0052a3; }
+
+.section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+.section h2 {
+  color: var(--secondary);
+  margin-bottom: 1rem;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--light);
+}
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--light); }
+th { background: var(--light); font-weight: 600; color: var(--dark); }
+tr:hover { background: #f9f9f9; }
+
+.status {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  display: inline-block;
+}
+.status.ativo { background: #ccf5e9; color: var(--accent); }
+.status.inativo { background: #ffe6e6; color: var(--danger); }
+.status.manutencao { background: #fff0cc; color: var(--warning); }
+
+.actions { display: flex; gap: 10px; }
+.action-btn {
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  background: var(--light);
+  color: var(--dark);
+}
+.action-btn.edit:hover { background: var(--primary); color: white; }
+.action-btn.delete:hover { background: var(--danger); color: white; }
+
+@media (max-width: 768px) {
+  .page-actions { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .search-bar { width: 100%; }
+}

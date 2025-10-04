@@ -1,0 +1,137 @@
+/* ---------- Reset básico / Normalização ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html, body, #app { height: 100%; }
+img, picture, video, canvas, svg { display: block; max-width: 100%; }
+input, button, textarea, select { font: inherit; }
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+/* ---------- Design tokens ---------- */
+:root {
+  --bg: #0f1115;
+  --bg-elev: #161922;
+  --text: #eaeaf2;
+  --muted: #a7aabc;
+  --primary: #6366f1;      /* indigo */
+  --primary-600: #5458e9;
+  --border: #262a36;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --radius: 12px;
+  --shadow: 0 6px 18px rgba(0,0,0,.25);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f8fb;
+    --bg-elev: #ffffff;
+    --text: #1b1e29;
+    --muted: #5b5f72;
+    --border: #e6e8f0;
+  }
+}
+
+/* ---------- Base ---------- */
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+.container { width: min(1100px, 92vw); margin: 0 auto; }
+
+/* ---------- Foco/Acessibilidade ---------- */
+:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--primary) 70%, white);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------- Layout de app com Navbar + Sidebar ---------- */
+.app-container { display: flex; flex-direction: column; min-height: 100dvh; }
+.navbar {
+  position: sticky; top: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.9rem 1.1rem; background: var(--bg-elev);
+  border-bottom: 1px solid var(--border); z-index: 10;
+}
+.content { flex: 1; display: grid; grid-template-columns: 240px 1fr; min-height: 0; }
+.sidebar {
+  border-right: 1px solid var(--border); background: var(--bg-elev);
+  padding: 1rem; overflow: auto;
+}
+main { padding: 1.25rem; overflow: auto; }
+
+@media (max-width: 920px) {
+  .content { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* ---------- Cartões e painéis ---------- */
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- Formulários ---------- */
+form { display: grid; gap: 0.9rem; }
+label { color: var(--muted); font-size: 0.95rem; }
+.input, input[type="text"], input[type="email"], input[type="password"], select, textarea {
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--bg) 90%, var(--bg-elev));
+  color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.input:focus, input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 25%, transparent);
+}
+
+.btn, button, [type="submit"] {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: .5rem; padding: 0.7rem 1rem;
+  border: 1px solid transparent; border-radius: 10px;
+  background: var(--primary); color: #fff; font-weight: 600;
+  transition: filter .15s ease, transform .02s ease;
+}
+.btn:hover { filter: brightness(1.05); }
+.btn:active { transform: translateY(1px); }
+.btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+
+/* ---------- Tabelas (listagens) ---------- */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: .75rem .9rem; border-bottom: 1px solid var(--border); }
+.table th { text-align: left; color: var(--muted); font-weight: 600; }
+
+/* ---------- Helpers ---------- */
+.muted { color: var(--muted); }
+.center { display: grid; place-items: center; }
+
+/* ---------- Login layout helper ---------- */
+.login-container {
+  width: min(420px, 92vw);
+  margin: 8vh auto;
+  padding: 1.25rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.login-title { text-align: center; margin-bottom: .75rem; }
+.login-subtitle { text-align: center; color: var(--muted); margin-bottom: 1rem; font-size: .95rem; }
+
+/* ---------- Animação reduzida ---------- */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
