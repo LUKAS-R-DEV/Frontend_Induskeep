@@ -1,6 +1,8 @@
 <script>
   import '$lib/styles/ordens-detalhe.css';
   import { page } from '$app/stores';
+  import { OrdersApi } from '$lib/api/orders';
+  import { goto } from '$app/navigation';
 
   // Exemplo mockado – depois você pode buscar da API
   let ordem = {
@@ -37,6 +39,20 @@
   function cancelarOS() {
     alert(`OS ${ordem.id} cancelada!`);
   }
+
+  async function excluirOS() {
+    try {
+      const ok = confirm('Tem certeza que deseja excluir esta OS? Esta ação não poderá ser desfeita.');
+      if (!ok) return;
+      const id = $page?.params?.id || ordem.id;
+      if (id) {
+        await OrdersApi.remove(id);
+      }
+      goto('/ordens');
+    } catch (e) {
+      alert(e?.message || 'Falha ao excluir a OS');
+    }
+  }
 </script>
 
 <div class="header">
@@ -54,10 +70,10 @@
   <div class="os-title">
     <span class="os-number">{ordem.id}</span>
     <span class={"status " + ordem.status}>{ordem.status}</span>
-    <span class={"priority " + ordem.prioridade}>{ordem.prioridade} Prioridade</span>
   </div>
   <div class="os-actions">
     <button class="btn warning"><i class="fas fa-edit"></i> Editar</button>
+    <button class="btn danger" on:click={excluirOS} title="Excluir OS"><i class="fas fa-trash"></i> Excluir</button>
   </div>
 </div>
 

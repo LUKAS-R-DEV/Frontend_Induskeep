@@ -1,63 +1,89 @@
 <script>
   import '$lib/styles/ordens.css';
+  import { onMount } from 'svelte';
+  import { OrdersApi } from '$lib/api/orders';
+  import { goto } from '$app/navigation';
 
   let search = '';
   let statusFilter = '';
-  let priorityFilter = '';
-  let dateFilter = '';
+  let dateFilter = ''; // YYYY-MM-DD
 
-  let ordens = [
-    {
-      id: '#045',
-      equipamento: 'Máquina de Moldagem A',
-      abertura: '05/09/2023',
-      previsao: '10/09/2023',
-      tecnico: 'Carlos Silva',
-      prioridade: 'alta',
-      status: 'aberta'
-    },
-    {
-      id: '#044',
-      equipamento: 'Compressor B',
-      abertura: '03/09/2023',
-      previsao: '05/09/2023',
-      tecnico: 'Ana Santos',
-      prioridade: 'media',
-      status: 'andamento'
-    },
-    {
-      id: '#043',
-      equipamento: 'Prensa Hidráulica',
-      abertura: '01/09/2023',
-      previsao: '03/09/2023',
-      tecnico: 'João Pereira',
-      prioridade: 'baixa',
-      status: 'concluida'
-    },
-    {
-      id: '#042',
-      equipamento: 'Misturador Industrial',
-      abertura: '28/08/2023',
-      previsao: '30/08/2023',
-      tecnico: 'Maria Oliveira',
-      prioridade: 'alta',
-      status: 'cancelada'
-    }
-  ];
+  let ordens = [];
+  let error = '';
+  let loading = true;
 
-  // Label para mostrar o texto bonitinho
   const statusLabels = {
-    aberta: 'Aberta',
-    andamento: 'Em Andamento',
-    concluida: 'Concluída',
-    cancelada: 'Cancelada'
+    PENDING: 'Pendente',
+    IN_PROGRESS: 'Em Andamento',
+    COMPLETED: 'Concluída',
+    CANCELLED: 'Cancelada'
   };
 
-  const prioridadeLabels = {
-    alta: 'Alta',
-    media: 'Média',
-    baixa: 'Baixa'
-  };
+  onMount(async () => {
+    try {
+      const data = await OrdersApi.list();
+      ordens = Array.isArray(data) ? data : [];
+    } catch (e) {
+      error = e.message;
+    } finally {
+      loading = false;
+    }
+  });
+
+  // helpers
+  const up = (v) => (v ?? '').toString().trim().toUpperCase();
+  const dateISO = (d) => new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // Filtros reativos
+  $: filteredOrders = ordens
+    // busca
+    .filter(os => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        (os.title || '').toLowerCase().includes(q) ||
+        (os.id || '').toLowerCase().includes(q) ||
+        (os.machine?.name || '').toLowerCase().includes(q)
+      );
+    })
+    // status
+    .filter(os => !statusFilter || up(os.status) === up(statusFilter))
+    // data
+    .filter(os => {
+      if (!dateFilter) return true;
+      try {
+        return dateISO(os.createdAt) === dateFilter;
+      } catch {
+        return false;
+      }
+    });
+
+  async function deleteOrder(id) {
+    try {
+      const ok = confirm('Tem certeza que deseja excluir esta OS? Esta ação não poderá ser desfeita.');
+      if (!ok) return;
+      await OrdersApi.remove(id);
+      ordens = ordens.filter(o => o.id !== id);
+    } catch (e) {
+      alert(e?.message || 'Falha ao excluir a OS');
+    }
+  }
+
+  // função para definir a cor do status
+  function getStatusClass(status) {
+    switch (status) {
+      case 'PENDING':
+        return 'status-pending';
+      case 'IN_PROGRESS':
+        return 'status-progress';
+      case 'COMPLETED':
+        return 'status-completed';
+      case 'CANCELLED':
+        return 'status-cancelled';
+      default:
+        return '';
+    }
+  }
 </script>
 
 <div class="header">
@@ -69,7 +95,7 @@
     <i class="fas fa-search"></i>
     <input type="text" placeholder="Buscar ordem de serviço..." bind:value={search} />
   </div>
-  <button class="btn" on:click={() => window.location.href='/ordens/cadastro'}>
+  <button class="btn" on:click={() => goto('/ordens/cadastro')}>
     <i class="fas fa-plus"></i> Nova OS
   </button>
 </div>
@@ -79,62 +105,111 @@
     <label for="statusFilter">Status</label>
     <select id="statusFilter" bind:value={statusFilter}>
       <option value="">Todos</option>
-      <option value="aberta">Aberta</option>
-      <option value="andamento">Em Andamento</option>
-      <option value="concluida">Concluída</option>
-      <option value="cancelada">Cancelada</option>
+      <option value="PENDING">Pendente</option>
+      <option value="IN_PROGRESS">Em Andamento</option>
+      <option value="COMPLETED">Concluída</option>
+      <option value="CANCELLED">Cancelada</option>
     </select>
   </div>
+
   <div class="filter-group">
-    <label for="priorityFilter">Prioridade</label>
-    <select id="priorityFilter" bind:value={priorityFilter}>
-      <option value="">Todas</option>
-      <option value="alta">Alta</option>
-      <option value="media">Média</option>
-      <option value="baixa">Baixa</option>
-    </select>
-  </div>
-  <div class="filter-group">
-    <label for="dateFilter">Período</label>
+    <label for="dateFilter">Data de abertura</label>
     <input type="date" id="dateFilter" bind:value={dateFilter} />
-  </div>
-  <div class="filter-actions">
-    <button class="apply">Aplicar Filtros</button>
-    <button on:click={() => {statusFilter=''; priorityFilter=''; dateFilter=''}}>Limpar</button>
   </div>
 </div>
 
-<div class="section">
-  <h2>Lista de Ordens de Serviço</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Nº OS</th>
-        <th>Equipamento</th>
-        <th>Data Abertura</th>
-        <th>Previsão</th>
-        <th>Técnico</th>
-        <th>Prioridade</th>
-        <th>Status</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each ordens as os}
-        <tr>
-          <td>{os.id}</td>
-          <td>{os.equipamento}</td>
-          <td>{os.abertura}</td>
-          <td>{os.previsao}</td>
-          <td>{os.tecnico}</td>
-          <td><span class={"priority " + os.prioridade}>{prioridadeLabels[os.prioridade]}</span></td>
-          <td><span class={"status " + os.status}>{statusLabels[os.status]}</span></td>
-          <td class="actions">
-            <button class="action-btn view" title="Ver detalhes"><i class="fas fa-eye"></i></button>
-            <button class="action-btn edit" title="Editar"><i class="fas fa-edit"></i></button>
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
-</div>
+{#if loading}
+  <div class="loading">Carregando ordens...</div>
+{:else if error}
+  <div class="error">⚠️ {error}</div>
+{:else}
+  <div class="section">
+    <h2>Lista de Ordens de Serviço</h2>
+    {#if filteredOrders.length > 0}
+      <table>
+        <thead>
+          <tr>
+            <th>Nº OS</th>
+            <th>Título</th>
+            <th>Equipamento</th>
+            <th>Data Abertura</th>
+            <th>Técnico</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each filteredOrders as os}
+            <tr>
+              <td>{(os.id || '').slice(0, 6).toUpperCase()}</td>
+              <td>{os.title}</td>
+              <td>{os.machine?.name}</td>
+              <td>{os.createdAt ? new Date(os.createdAt).toLocaleDateString() : '-'}</td>
+              <td>{os.user?.name}</td>
+              <td>
+                <span class={getStatusClass(up(os.status))}>
+                  {statusLabels[up(os.status)] || os.status}
+                </span>
+              </td>
+              <td class="actions">
+                <button
+                  class="action-btn edit"
+                  title="Atualizar OS"
+                  on:click={() => goto(`/ordens/${os.id}/editar`)}
+                >
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button
+                  class="action-btn delete"
+                  title="Excluir OS"
+                  on:click={() => deleteOrder(os.id)}
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {:else}
+      <p>Nenhuma ordem encontrada.</p>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  /* Removendo prioridade */
+  .priority {
+    display: none;
+  }
+
+  /* Status coloridos */
+  .status-pending {
+    background: #fff4e5;
+    color: #c47f00;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .status-progress {
+    background: #e6f0ff;
+    color: #1d4ed8;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .status-completed {
+    background: #e6f9ef;
+    color: #008a4e;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .status-cancelled {
+    background: #fde8e8;
+    color: #b91c1c;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+</style>

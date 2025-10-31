@@ -1,16 +1,21 @@
 <script>
+import {UserApi} from '$lib/api/users'
   import '$lib/styles/login.css';
   import { goto } from '$app/navigation';
 
   let email = '';
   let password = '';
+  let error='';
 
   async function handleLogin() {
     try {
-      window.location.href="/dashboard"
-    } catch (error) {
-      console.error('Login error:', error);
-      alert("⚠️ Erro ao fazer login. Tente novamente.");
+      const data=await UserApi.login({email,password});
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      await window.location.replace('/dashboard');
+    } catch (e) {
+    error=e.message;
+    
     }
   }
 </script>

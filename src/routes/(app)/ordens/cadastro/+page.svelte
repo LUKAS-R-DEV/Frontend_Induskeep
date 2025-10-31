@@ -1,37 +1,48 @@
 <script>
   import '$lib/styles/ordens-cadastro.css';
+  import { OrdersApi } from '$lib/api/orders';
   import { goto } from '$app/navigation';
 
-  let equipment = '';
-  let type = '';
-  let technician = '';
-  let priority = '';
-  let openingDate = '';
-  let deadline = '';
+  // Campos necessários para criar ordem conforme seu backend
+  let title = '';
   let description = '';
+  let machineId = '';
+  let userId = '';
+  let status = 'PENDING';
 
-  let parts = [];
+  let loading = false;
+  let error = '';
 
-  function addPart() {
-    parts = [
-      ...parts,
-      {
-        id: Date.now(),
-        name: '',
-        quantity: 1,
-        price: 0
-      }
-    ];
-  }
+  // ⚙️ Exemplo de dados estáticos (substitua por fetch futuro)
+  const machines = [
+    { id: '11902ccc-e1cf-4c47-9fea-6316ae0a3e67', name: 'Compressor A12' },
+    { id: '2bd83846-2c34-4073-a39f-348bf86ef2f4', name: 'Esteira X55' },
+    { id: '9cb2e6a0-023d-42d5-8ca7-7d7bf8ced1a0', name: 'Máquina de Moldagem' }
+  ];
 
-  function removePart(id) {
-    parts = parts.filter(p => p.id !== id);
-  }
+  const users = [
+    { id: 'a5718035-b24f-49f9-b8d7-de7c9e5a4726', name: 'Lucas Técnico' },
+    { id: '411ecedc-a4b6-452c-8fd9-f1887259d041', name: 'Carlos Silva' }
+  ];
 
-  function handleSubmit(e) {
+  // Função de envio
+  async function handleSubmit(e) {
     e.preventDefault();
-    alert('Ordem de Serviço salva com sucesso!');
-    goto('/ordens');
+    loading = true;
+    error = '';
+
+    try {
+      const payload = { title, description, machineId, userId, status };
+      await OrdersApi.create(payload);
+
+      alert('✅ Ordem de Serviço criada com sucesso!');
+      goto('/ordens');
+    } catch (err) {
+      console.error(err);
+      error = err.message || 'Falha ao salvar ordem.';
+    } finally {
+      loading = false;
+    }
   }
 </script>
 
@@ -46,111 +57,84 @@
 </div>
 
 <div class="section">
-  <h2>Dados da Ordem de Serviço</h2>
+  <h2>Dados da Ordem</h2>
+
   <form on:submit={handleSubmit}>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="equipment">Equipamento *</label>
-        <select id="equipment" bind:value={equipment} required>
-          <option value="">Selecione um equipamento</option>
-          <option>Máquina de Moldagem A</option>
-          <option>Compressor B</option>
-          <option>Prensa Hidráulica</option>
-          <option>Misturador Industrial</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="type">Tipo de Manutenção *</label>
-        <select id="type" bind:value={type} required>
-          <option value="">Selecione o tipo</option>
-          <option value="preventiva">Preventiva</option>
-          <option value="corretiva">Corretiva</option>
-          <option value="preditiva">Preditiva</option>
-        </select>
-      </div>
+    <!-- Título -->
+    <div class="form-group">
+      <label for="title">Título *</label>
+      <input
+        id="title"
+        type="text"
+        bind:value={title}
+        required
+        placeholder="Ex: Troca de correia da esteira"
+      />
     </div>
 
+    <!-- Descrição -->
+    <div class="form-group">
+      <label for="description">Descrição *</label>
+      <textarea
+        id="description"
+        bind:value={description}
+        required
+        placeholder="Descreva o problema identificado..."
+      ></textarea>
+    </div>
+
+    <!-- Seleção de equipamento e técnico -->
     <div class="form-row">
+      <div class="form-group">
+        <label for="machine">Equipamento *</label>
+        <select id="machine" bind:value={machineId} required>
+          <option value="">Selecione um equipamento</option>
+          {#each machines as m}
+            <option value={m.id}>{m.name}</option>
+          {/each}
+        </select>
+      </div>
+
       <div class="form-group">
         <label for="technician">Técnico Responsável *</label>
-        <select id="technician" bind:value={technician} required>
+        <select id="technician" bind:value={userId} required>
           <option value="">Selecione um técnico</option>
-          <option>Carlos Silva</option>
-          <option>Ana Santos</option>
-          <option>João Pereira</option>
-          <option>Maria Oliveira</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="priority">Prioridade *</label>
-        <select id="priority" bind:value={priority} required>
-          <option value="baixa">Baixa</option>
-          <option value="media">Média</option>
-          <option value="alta">Alta</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label for="openingDate">Data de Abertura *</label>
-        <input type="date" id="openingDate" bind:value={openingDate} required />
-      </div>
-      <div class="form-group">
-        <label for="deadline">Previsão de Conclusão *</label>
-        <input type="date" id="deadline" bind:value={deadline} required />
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="description">Descrição do Problema *</label>
-      <textarea id="description" bind:value={description} required></textarea>
-    </div>
-
-    <!-- Peças -->
-    <div class="parts-list">
-      <div class="parts-header">
-        <h3>Peças Utilizadas</h3>
-        <button type="button" class="btn secondary" on:click={addPart}>
-          <i class="fas fa-plus"></i> Adicionar Peça
-        </button>
-      </div>
-      <table class="parts-table">
-        <thead>
-          <tr>
-            <th>Peça</th>
-            <th>Quantidade</th>
-            <th>Valor Unit.</th>
-            <th>Ação</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each parts as part}
-            <tr>
-              <td>
-                <select bind:value={part.name}>
-                  <option value="">Selecione uma peça</option>
-                  <option>Rolamento AX-205</option>
-                  <option>Correia Dentada 5M</option>
-                  <option>Sensor de Temperatura</option>
-                </select>
-              </td>
-              <td><input type="number" min="1" bind:value={part.quantity} /></td>
-              <td>R$ {part.price.toFixed(2)}</td>
-              <td>
-                <span class="remove-part" on:click={() => removePart(part.id)}>
-                  <i class="fas fa-times"></i>
-                </span>
-              </td>
-            </tr>
+          {#each users as u}
+            <option value={u.id}>{u.name}</option>
           {/each}
-        </tbody>
-      </table>
+        </select>
+      </div>
     </div>
 
+    <!-- Status (padrão PENDING) -->
+    <div class="form-group">
+      <label for="status">Status</label>
+      <select id="status" bind:value={status}>
+        <option value="PENDING">Pendente</option>
+        <option value="IN_PROGRESS">Em Andamento</option>
+        <option value="COMPLETED">Concluída</option>
+        <option value="CANCELLED">Cancelada</option>
+      </select>
+    </div>
+
+    <!-- Mensagem de erro -->
+    {#if error}
+      <div class="error">⚠️ {error}</div>
+    {/if}
+
+    <!-- Botões -->
     <div class="form-actions">
-      <button type="button" class="btn secondary" on:click={() => goto('/ordens')}>Cancelar</button>
-      <button type="submit" class="btn">Salvar OS</button>
+      <button type="button" class="btn secondary" on:click={() => goto('/ordens')}>
+        Cancelar
+      </button>
+
+      <button type="submit" class="btn" disabled={loading}>
+        {#if loading}
+          <i class="fas fa-spinner fa-spin"></i> Salvando...
+        {:else}
+          <i class="fas fa-save"></i> Salvar OS
+        {/if}
+      </button>
     </div>
   </form>
 </div>
