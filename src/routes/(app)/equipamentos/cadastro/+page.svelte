@@ -1,29 +1,63 @@
 <script>
   import '$lib/styles/equipamentos-cadastro.css';
   import { goto } from '$app/navigation';
+  import { MachinesApi } from '$lib/api/machines';
+  import { onMount } from 'svelte';
 
   let name = '';
   let serial = '';
-  let sector = '';
-  let model = '';
-  let manufacturer = '';
-  let purchaseDate = '';
-  let maintenanceInterval = 90;
-  let status = 'active';
-  let description = '';
+  let location = '';
+  let status = 'ACTIVE';
+  let userId = '';
 
-  function handleSubmit(e) {
+  let loading = false;
+  let error = '';
+
+  // 🔹 Recupera o ID do usuário logado (caso o token o contenha)
+  onMount(() => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        userId = user.id;
+      }
+    } catch (e) {
+      console.warn('Falha ao carregar usuário local:', e);
+    }
+  });
+
+  async function handleSubmit(e) {
     e.preventDefault();
+    if (!userId) {
+      alert('Usuário não autenticado! Faça login novamente.');
+      return;
+    }
 
-    // Aqui você pode chamar sua API futuramente
-    alert(`Equipamento "${name}" salvo com sucesso!`);
-    goto('/equipamentos');
+    const payload = {
+      name,
+      serial,
+      location,
+      userId,
+    };
+
+    try {
+      loading = true;
+      await MachinesApi.create(payload);
+      alert(`Equipamento "${name}" cadastrado com sucesso!`);
+      goto('/equipamentos');
+    } catch (err) {
+      error = err.message || 'Erro ao salvar equipamento';
+      alert(error);
+    } finally {
+      loading = false;
+    }
   }
 </script>
 
 <div class="header">
   <h1>Cadastro de Equipamento</h1>
-  </div>
+</div>
+
 <div class="page-actions">
   <button class="btn secondary" on:click={() => goto('/equipamentos')}>
     <i class="fas fa-arrow-left"></i> Voltar
@@ -46,55 +80,54 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label for="sector">Setor *</label>
-        <select id="sector" bind:value={sector} required>
+        <label for="location">Localização / Setor *</label>
+        <select id="location" bind:value={location} required>
           <option value="">Selecione um setor</option>
-          <option value="producao">Produção</option>
-          <option value="utilidades">Utilidades</option>
-          <option value="expedicao">Expedição</option>
-          <option value="preparacao">Preparação</option>
+          <option value="Produção">Produção</option>
+          <option value="Utilidades">Utilidades</option>
+          <option value="Expedição">Expedição</option>
+          <option value="Preparação">Preparação</option>
+          <option value="Manutenção">Manutenção</option>
         </select>
-      </div>
-      <div class="form-group">
-        <label for="model">Modelo</label>
-        <input id="model" type="text" bind:value={model} />
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label for="manufacturer">Fabricante</label>
-        <input id="manufacturer" type="text" bind:value={manufacturer} />
-      </div>
-      <div class="form-group">
-        <label for="purchaseDate">Data de Aquisição</label>
-        <input id="purchaseDate" type="date" bind:value={purchaseDate} />
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label for="maintenanceInterval">Intervalo de Manutenção (dias)</label>
-        <input id="maintenanceInterval" type="number" min="1" bind:value={maintenanceInterval} />
       </div>
       <div class="form-group">
         <label for="status">Status *</label>
         <select id="status" bind:value={status} required>
-          <option value="active">Ativo</option>
-          <option value="maintenance">Em Manutenção</option>
-          <option value="inactive">Inativo</option>
+          <option value="ACTIVE">Ativo</option>
+          <option value="MAINTENANCE">Em Manutenção</option>
+          <option value="INACTIVE">Inativo</option>
         </select>
       </div>
     </div>
 
-    <div class="form-group">
-      <label for="description">Descrição / Observações</label>
-      <textarea id="description" bind:value={description}></textarea>
-    </div>
+    {#if error}
+      <div class="error">{error}</div>
+    {/if}
 
     <div class="form-actions">
-      <button type="button" class="btn secondary" on:click={() => goto('/equipamentos')}>Cancelar</button>
-      <button type="submit" class="btn">Salvar Equipamento</button>
+      <button
+        type="button"
+        class="btn secondary"
+        on:click={() => goto('/equipamentos')}
+      >
+        Cancelar
+      </button>
+      <button type="submit" class="btn" disabled={loading}>
+        {loading ? 'Salvando...' : 'Salvar Equipamento'}
+      </button>
     </div>
   </form>
 </div>
+
+<style>
+  .error {
+    color: #b91c1c;
+    margin-top: 1rem;
+    font-weight: 500;
+  }
+
+  button[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+</style>

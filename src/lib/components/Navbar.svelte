@@ -1,10 +1,32 @@
+<script>
+import {onMount} from 'svelte';
+let user=null
+
+onMount(()=>{
+ const stored=localStorage.getItem('user')
+ if(stored){
+  try{
+    user=JSON.parse(stored)
+  }catch(e){
+    user=null
+  }
+  }
+ }
+)
+</script>
+
+
+
 <nav class="navbar">
   <div class="logo"><i class="fas fa-industry"></i>INDUSKEEP</div>
   <div class="user-info">
     <i class="fas fa-user-circle"></i>
-    <span>Usuário</span>
+    <span>{user?user.name:"Usuario"}</span>
   </div>
 </nav>
+
+
+
 
 <style>
   .navbar {

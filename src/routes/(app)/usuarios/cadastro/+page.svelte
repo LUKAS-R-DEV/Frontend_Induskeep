@@ -1,18 +1,17 @@
 <script>
   import '$lib/styles/usuarios-cadastro.css';
   import { goto } from '$app/navigation';
+  import { UserApi } from '$lib/api/users';
 
   let name = '';
   let email = '';
-  let role = '';
-  let sector = '';
   let password = '';
   let confirmPassword = '';
-  let phone = '';
-  let status = 'active';
+  let role = '';
 
   let passwordStrength = { width: '0%', color: '#ccc', text: 'Força da senha' };
   let passwordMatch = '';
+  let loading = false;
 
   function checkPasswordStrength() {
     let strength = 0;
@@ -43,29 +42,36 @@
     }
   }
 
-  function formatPhone(e) {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 11) value = value.slice(0, 11);
-
-    if (value.length > 6) {
-      value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    } else if (value.length > 2) {
-      value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
-    } else if (value.length > 0) {
-      value = value.replace(/(\d{0,2})/, '($1');
-    }
-
-    phone = value;
-  }
-
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+
     if (password !== confirmPassword) {
       alert('As senhas não coincidem!');
       return;
     }
-    alert('Usuário salvo com sucesso!');
-    goto('/usuarios');
+
+    if (!name || !email || !role || !password) {
+      alert('Preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    const payload = {
+      name,
+      email,
+      password,
+      role: role.toUpperCase(), // backend usa letras maiúsculas
+    };
+
+    try {
+      loading = true;
+      await UserApi.register(payload);
+      alert('Usuário cadastrado com sucesso!');
+      goto('/usuarios');
+    } catch (err) {
+      alert(err.message || 'Erro ao cadastrar usuário');
+    } finally {
+      loading = false;
+    }
   }
 </script>
 
@@ -98,20 +104,9 @@
         <label for="role">Perfil de Acesso *</label>
         <select id="role" bind:value={role} required>
           <option value="">Selecione um perfil</option>
-          <option value="admin">Administrador</option>
-          <option value="supervisor">Supervisor</option>
-          <option value="tecnico">Técnico</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="sector">Setor/Localização</label>
-        <select id="sector" bind:value={sector}>
-          <option value="">Selecione um setor</option>
-          <option value="producao">Produção</option>
-          <option value="utilidades">Utilidades</option>
-          <option value="expedicao">Expedição</option>
-          <option value="manutencao">Manutenção</option>
-          <option value="administrativo">Administrativo</option>
+          <option value="ADMIN">Administrador</option>
+          <option value="SUPERVISOR">Supervisor</option>
+          <option value="TECHNICIAN">Técnico</option>
         </select>
       </div>
     </div>
@@ -132,23 +127,37 @@
       </div>
     </div>
 
-    <div class="form-row">
-      <div class="form-group">
-        <label for="phone">Telefone</label>
-        <input id="phone" type="tel" bind:value={phone} on:input={formatPhone} placeholder="(00) 00000-0000" />
-      </div>
-      <div class="form-group">
-        <label for="status">Status *</label>
-        <select id="status" bind:value={status} required>
-          <option value="active">Ativo</option>
-          <option value="inactive">Inativo</option>
-        </select>
-      </div>
-    </div>
-
     <div class="form-actions">
       <button type="button" class="btn secondary" on:click={() => goto('/usuarios')}>Cancelar</button>
-      <button type="submit" class="btn">Salvar Usuário</button>
+      <button type="submit" class="btn" disabled={loading}>
+        {loading ? 'Salvando...' : 'Salvar Usuário'}
+      </button>
     </div>
   </form>
 </div>
+
+<style>
+  .password-strength {
+    height: 6px;
+    width: 100%;
+    background: #eee;
+    border-radius: 4px;
+    margin-top: 4px;
+  }
+
+  .password-strength-bar {
+    height: 6px;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+
+  small {
+    display: block;
+    margin-top: 4px;
+  }
+
+  button[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+</style>

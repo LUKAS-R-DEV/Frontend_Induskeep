@@ -1,59 +1,43 @@
 <script>
   import '$lib/styles/usuarios.css';
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { UserApi } from '$lib/api/users';
 
   let search = '';
+  let usuarios = [];
+  let loading = true;
+  let error = '';
 
-  let usuarios = [
-    {
-      nome: 'Administrador Sistema',
-      email: 'admin@induskeep.com',
-      perfil: 'administrador',
-      setor: 'Todos',
-      status: 'ativo',
-      ultimoAcesso: '05/09/2023 14:30'
-    },
-    {
-      nome: 'Carlos Silva',
-      email: 'carlos.silva@induskeep.com',
-      perfil: 'supervisor',
-      setor: 'Manutenção',
-      status: 'ativo',
-      ultimoAcesso: '05/09/2023 13:45'
-    },
-    {
-      nome: 'Ana Santos',
-      email: 'ana.santos@induskeep.com',
-      perfil: 'tecnico',
-      setor: 'Produção',
-      status: 'ativo',
-      ultimoAcesso: '05/09/2023 12:20'
-    },
-    {
-      nome: 'João Pereira',
-      email: 'joao.pereira@induskeep.com',
-      perfil: 'tecnico',
-      setor: 'Utilidades',
-      status: 'ativo',
-      ultimoAcesso: '04/09/2023 16:40'
-    },
-    {
-      nome: 'Maria Oliveira',
-      email: 'maria.oliveira@induskeep.com',
-      perfil: 'tecnico',
-      setor: 'Expedição',
-      status: 'inativo',
-      ultimoAcesso: '28/08/2023 10:15'
+  // Carrega usuários da API
+  onMount(async () => {
+    try {
+      const data = await UserApi.list();
+      usuarios = Array.isArray(data) ? data : [];
+    } catch (err) {
+      error = err.message || 'Erro ao carregar usuários';
+    } finally {
+      loading = false;
     }
-  ];
+  });
 
+  // Funções
   function editarUsuario(usuario) {
-    alert(`Editar usuário: ${usuario.nome}`);
+    goto(`/usuarios/${usuario.id}/editar`);
   }
 
-  function deletarUsuario(usuario) {
-    if (confirm(`Deseja realmente excluir ${usuario.nome}?`)) {
-      usuarios = usuarios.filter(u => u !== usuario);
+  async function deletarUsuario(usuario) {
+    const ok = confirm(`Deseja realmente desativar o usuário "${usuario.name}"?`);
+    if (!ok) return;
+
+    try {
+      await UserApi.deactivate(usuario.id, 'Desativado via painel');
+      alert('Usuário desativado com sucesso.');
+      usuarios = usuarios.map(u =>
+        u.id === usuario.id ? { ...u, isActive: false } : u
+      );
+    } catch (err) {
+      alert(err.message || 'Erro ao desativar usuário.');
     }
   }
 </script>
@@ -72,35 +56,98 @@
   </button>
 </div>
 
-<div class="section">
-  <h2>Lista de Usuários</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Nome</th>
-        <th>E-mail</th>
-        <th>Perfil</th>
-        <th>Setor</th>
-        <th>Status</th>
-        <th>Último Acesso</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each usuarios.filter(u => u.nome.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())) as u}
-        <tr>
-          <td>{u.nome}</td>
-          <td>{u.email}</td>
-          <td><span class={"role " + u.perfil}>{u.perfil}</span></td>
-          <td>{u.setor}</td>
-          <td><span class={"status " + u.status}>{u.status}</span></td>
-          <td>{u.ultimoAcesso}</td>
-          <td class="actions">
-            <button class="action-btn edit" on:click={() => editarUsuario(u)}><i class="fas fa-edit"></i></button>
-            <button class="action-btn delete" on:click={() => deletarUsuario(u)}><i class="fas fa-trash"></i></button>
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
-</div>
+{#if loading}
+  <div class="loading">Carregando usuários...</div>
+{:else if error}
+  <div class="error">⚠️ {error}</div>
+{:else}
+  <div class="section">
+    <h2>Lista de Usuários</h2>
+    {#if usuarios.length > 0}
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Perfil</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each usuarios
+            .filter(u =>
+              (u.name?.toLowerCase().includes(search.toLowerCase()) ||
+                u.email?.toLowerCase().includes(search.toLowerCase()))
+            ) as u}
+            <tr>
+              <td>{u.name}</td>
+              <td>{u.email}</td>
+              <td><span class="role">{u.role || 'Técnico'}</span></td>
+              <td>
+                <span class={"status " + (u.isActive ? 'ativo' : 'inativo')}>
+                  {u.isActive ? 'Ativo' : 'Inativo'}
+                </span>
+              </td>
+              <td class="actions">
+                <button
+                  class="action-btn edit"
+                  title="Editar"
+                  on:click={() => editarUsuario(u)}
+                >
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button
+                  class="action-btn delete"
+                  title="Desativar"
+                  on:click={() => deletarUsuario(u)}
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {:else}
+      <p>Nenhum usuário encontrado.</p>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  .role {
+    background: #eef2ff;
+    color: #3730a3;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-transform: capitalize;
+  }
+
+  .status.ativo {
+    background: #e6f9ef;
+    color: #008a4e;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  .status.inativo {
+    background: #fde8e8;
+    color: #b91c1c;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  .loading,
+  .error {
+    margin-top: 2rem;
+    font-size: 1.2rem;
+  }
+
+  .error {
+    color: #b91c1c;
+  }
+</style>
