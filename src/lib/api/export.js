@@ -1,11 +1,14 @@
 // src/lib/api/export.js
 
+// Base da API com fallback seguro (alinhado com base.js)
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000/api").replace(/\/+$/, "");
+
 export const ExportApi = {
   async download(module, format = "pdf") {
     const token = localStorage.getItem("token");
 
     const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/export/${module}?format=${format}`,
+      `${API_URL}/export/${module}?format=${format}`,
       {
         method: "GET",
         headers: {
