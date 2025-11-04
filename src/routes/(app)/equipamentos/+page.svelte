@@ -39,8 +39,8 @@
   }
 </script>
 
-<div class="header">
-  <h1>Gestão de Equipamentos</h1>
+<div class="page-header">
+  <h1>⚙️ Equipamentos</h1>
 </div>
 
 <div class="page-actions">
@@ -52,21 +52,28 @@
       bind:value={search}
     />
   </div>
-  <button class="btn" on:click={() => goto('/equipamentos/cadastro')}>
+  <button class="btn-primary" on:click={() => goto('/equipamentos/cadastro')}>
     <i class="fas fa-plus"></i> Novo Equipamento
   </button>
 </div>
 
 {#if loading}
-  <div class="loading">Carregando equipamentos...</div>
+  <div class="loading-state">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Carregando equipamentos...</p>
+  </div>
 {:else if error}
-  <div class="error">⚠️ {error}</div>
+  <div class="error-state">
+    <i class="fas fa-exclamation-circle"></i>
+    <p>{error}</p>
+  </div>
 {:else}
-  <div class="section">
+  <div class="page-section">
     <h2>Lista de Equipamentos</h2>
 
     {#if equipamentos.length > 0}
-      <table>
+      <div class="table-wrapper">
+        <table class="standard-table">
         <thead>
           <tr>
             <th>Nome</th>
@@ -114,8 +121,12 @@
           {/each}
         </tbody>
       </table>
+      </div>
     {:else}
-      <p>Nenhum equipamento encontrado.</p>
+      <div class="empty-state">
+        <i class="fas fa-cogs"></i>
+        <p>Nenhum equipamento encontrado.</p>
+      </div>
     {/if}
   </div>
 {/if}

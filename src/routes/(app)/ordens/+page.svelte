@@ -2,6 +2,8 @@
   import '$lib/styles/ordens.css';
   import { onMount } from 'svelte';
   import { OrdersApi } from '$lib/api/orders';
+  import {HistoryApi} from '$lib/api/history';
+  import {NotificationsApi} from '$lib/api/notifications';
   import { goto } from '$app/navigation';
 
   let search = '';
@@ -36,27 +38,29 @@
 
   // Filtros reativos
   $: filteredOrders = ordens
-    // busca
-    .filter(os => {
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (
-        (os.title || '').toLowerCase().includes(q) ||
-        (os.id || '').toLowerCase().includes(q) ||
-        (os.machine?.name || '').toLowerCase().includes(q)
-      );
-    })
-    // status
-    .filter(os => !statusFilter || up(os.status) === up(statusFilter))
-    // data
-    .filter(os => {
-      if (!dateFilter) return true;
-      try {
-        return dateISO(os.createdAt) === dateFilter;
-      } catch {
-        return false;
-      }
-    });
+  // remove concluídas
+  .filter(os => up(os.status) !== 'COMPLETED')
+  // busca
+  .filter(os => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (os.title || '').toLowerCase().includes(q) ||
+      (os.id || '').toLowerCase().includes(q) ||
+      (os.machine?.name || '').toLowerCase().includes(q)
+    );
+  })
+  // status
+  .filter(os => !statusFilter || up(os.status) === up(statusFilter))
+  // data
+  .filter(os => {
+    if (!dateFilter) return true;
+    try {
+      return dateISO(os.createdAt) === dateFilter;
+    } catch {
+      return false;
+    }
+  });
 
   async function deleteOrder(id) {
     try {
@@ -68,8 +72,46 @@
       alert(e?.message || 'Falha ao excluir a OS');
     }
   }
+  async function completeOrder(id) {
+  try {
+    let concluida = false;
+    const ok = confirm('Deseja marcar esta OS como concluída?');
+    if (!ok) return;
+    
+    const order = ordens.find(o => o.id === id);
+    if (!order) {
+      throw new Error('Ordem de serviço não encontrada');
+    }
+    await HistoryApi.create({
+      orderId: id,
+      notes: 'Ordem de serviço concluída pelo sistema'
+    });
+    concluida = true;
 
-  // função para definir a cor do status
+    if (concluida==true){
+      alert('Ordem de serviço concluida com sucesso');
+
+      const notificationPayload = {
+        title: 'Ordem de serviço concluida',
+        message: `Ordem de serviço concluida: ${order.title}`,
+        userId: order.userId,
+      };
+      await NotificationsApi.create(notificationPayload);
+
+      
+    }
+    ordens = ordens.map(order => 
+      order.id === id ? { ...order, status: 'COMPLETED' } : order
+      
+    );
+
+  } catch (e) {
+    alert(e?.message || 'Falha ao concluir a OS');
+  }
+}
+
+  
+
   function getStatusClass(status) {
     switch (status) {
       case 'PENDING':
@@ -86,8 +128,8 @@
   }
 </script>
 
-<div class="header">
-  <h1>Ordens de Serviço</h1>
+<div class="page-header">
+  <h1>🔧 Ordens de Serviço</h1>
 </div>
 
 <div class="page-actions">
@@ -95,7 +137,7 @@
     <i class="fas fa-search"></i>
     <input type="text" placeholder="Buscar ordem de serviço..." bind:value={search} />
   </div>
-  <button class="btn" on:click={() => goto('/ordens/cadastro')}>
+  <button class="btn-primary" on:click={() => goto('/ordens/cadastro')}>
     <i class="fas fa-plus"></i> Nova OS
   </button>
 </div>
@@ -107,7 +149,6 @@
       <option value="">Todos</option>
       <option value="PENDING">Pendente</option>
       <option value="IN_PROGRESS">Em Andamento</option>
-      <option value="COMPLETED">Concluída</option>
       <option value="CANCELLED">Cancelada</option>
     </select>
   </div>
@@ -119,14 +160,21 @@
 </div>
 
 {#if loading}
-  <div class="loading">Carregando ordens...</div>
+  <div class="loading-state">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Carregando ordens...</p>
+  </div>
 {:else if error}
-  <div class="error">⚠️ {error}</div>
+  <div class="error-state">
+    <i class="fas fa-exclamation-circle"></i>
+    <p>{error}</p>
+  </div>
 {:else}
-  <div class="section">
+  <div class="page-section">
     <h2>Lista de Ordens de Serviço</h2>
     {#if filteredOrders.length > 0}
-      <table>
+      <div class="table-wrapper">
+        <table class="standard-table">
         <thead>
           <tr>
             <th>Nº OS</th>
@@ -166,13 +214,25 @@
                 >
                   <i class="fas fa-trash"></i>
                 </button>
+                <button
+                  class="action-btn complete"
+                  title="Concluir OS"
+                  on:click={() => completeOrder(os.id)}
+                disabled={os.status === 'COMPLETED'}
+                  >
+                  <i class="fas fa-check"></i>
+</button>
               </td>
             </tr>
           {/each}
         </tbody>
       </table>
+      </div>
     {:else}
-      <p>Nenhuma ordem encontrada.</p>
+      <div class="empty-state">
+        <i class="fas fa-clipboard-list"></i>
+        <p>Nenhuma ordem encontrada.</p>
+      </div>
     {/if}
   </div>
 {/if}

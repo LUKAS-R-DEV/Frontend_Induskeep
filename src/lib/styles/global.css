@@ -124,3 +124,304 @@ label { color: var(--muted); font-size: 0.95rem; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+}
+
+th, td {
+  border-bottom: none;
+}
+
+tr:hover {
+  background: #f9f9f9;
+}
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cabeçalhos */
+th {
+  background: #f8f9fb;
+  font-weight: 600;
+  text-align: left;
+  padding: 1rem 1.2rem;
+  color: #333;
+  border-bottom: none;
+}
+
+/* Células */
+td {
+  padding: 1rem 1.2rem;
+  color: #222;
+  border-bottom: none;
+  font-size: 0.95rem;
+}
+
+/* Efeito hover suave */
+tbody tr:hover {
+  background: #f9f9f9;
+  transition: background 0.2s ease;
+}
+
+/* Espaço visual entre seções (como filtros + tabelas) */
+.section table {
+  border-radius: 10px;
+  overflow: hidden;
+  border: none;
+}
+
+/* ===========================
+   STATUS BADGES UNIFICADOS
+=========================== */
+.status-pending,
+.status-progress,
+.status-completed,
+.status-cancelled,
+.status.active,
+.status.inactive,
+.status.maintenance {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+/* Manutenção de cores padrão */
+.status-pending { background: #fff4e5; color: #b46a00; }
+.status-progress { background: #e6f0ff; color: #1d4ed8; }
+.status-completed, .status.active { background: #e6f9ef; color: #008a4e; }
+.status-cancelled, .status.inactive { background: #fde8e8; color: #b91c1c; }
+.status.maintenance { background: #fff4cc; color: #b36b00; }
+
+/* ===========================
+   BOTÕES DE AÇÃO PADRONIZADOS
+=========================== */
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #333;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.action-btn:hover {
+  background: #f2f4f7;
+}
+
+.action-btn.edit:hover {
+  color: #1d4ed8;
+}
+
+.action-btn.delete:hover {
+  color: #dc2626;
+}
+
+.action-btn.complete:hover {
+  color: #16a34a;
+}
+
+/* ===========================
+   PADRÕES DE PÁGINA PROFISSIONAIS
+=========================== */
+
+/* Header de página padronizado */
+.page-header {
+  background: white;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  padding: 0;
+}
+
+/* Seção padronizada */
+.page-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+
+.page-section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1.25rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+/* Ações de página padronizadas */
+.page-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.search-bar i {
+  margin-right: 0.75rem;
+  color: #6b7280;
+}
+
+.search-bar input {
+  border: none;
+  outline: none;
+  padding: 0.5rem;
+  width: 100%;
+  background: transparent;
+  font-size: 0.95rem;
+}
+
+/* Botão primário padronizado */
+.btn-primary {
+  padding: 0.625rem 1.25rem;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.btn-primary:hover {
+  background: #0052a3;
+}
+
+/* Mensagens de estado padronizadas */
+.empty-state,
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #6b7280;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.empty-state i,
+.loading-state i,
+.error-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #9ca3af;
+}
+
+.empty-state p,
+.loading-state p,
+.error-state p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.error-state {
+  color: #dc2626;
+}
+
+.error-state i {
+  color: #dc2626;
+}
+
+/* Tabela padronizada - versão melhorada */
+.standard-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.standard-table thead {
+  background: #f8f9fb;
+}
+
+.standard-table th {
+  background: #f8f9fb;
+  font-weight: 600;
+  text-align: left;
+  padding: 1rem 1.25rem;
+  color: #374151;
+  border-bottom: none;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.standard-table td {
+  padding: 1.25rem 1.25rem;
+  color: #1f2937;
+  border-bottom: none;
+  font-size: 0.95rem;
+}
+
+.standard-table tbody tr {
+  border-bottom: none;
+}
+
+.standard-table tbody tr:hover {
+  background: #f9fafb;
+  transition: background 0.15s ease;
+}
+
+/* Wrapper para tabelas com scroll horizontal quando necessário */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.table-wrapper table {
+  min-width: 100%;
+}

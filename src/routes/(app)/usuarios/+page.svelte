@@ -42,8 +42,8 @@
   }
 </script>
 
-<div class="header">
-  <h1>Gestão de Usuários</h1>
+<div class="page-header">
+  <h1>👥 Usuários</h1>
 </div>
 
 <div class="page-actions">
@@ -51,20 +51,27 @@
     <i class="fas fa-search"></i>
     <input type="text" placeholder="Buscar usuário..." bind:value={search} />
   </div>
-  <button class="btn" on:click={() => goto('/usuarios/cadastro')}>
+  <button class="btn-primary" on:click={() => goto('/usuarios/cadastro')}>
     <i class="fas fa-plus"></i> Novo Usuário
   </button>
 </div>
 
 {#if loading}
-  <div class="loading">Carregando usuários...</div>
+  <div class="loading-state">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Carregando usuários...</p>
+  </div>
 {:else if error}
-  <div class="error">⚠️ {error}</div>
+  <div class="error-state">
+    <i class="fas fa-exclamation-circle"></i>
+    <p>{error}</p>
+  </div>
 {:else}
-  <div class="section">
+  <div class="page-section">
     <h2>Lista de Usuários</h2>
     {#if usuarios.length > 0}
-      <table>
+      <div class="table-wrapper">
+        <table class="standard-table">
         <thead>
           <tr>
             <th>Nome</th>
@@ -109,8 +116,12 @@
           {/each}
         </tbody>
       </table>
+      </div>
     {:else}
-      <p>Nenhum usuário encontrado.</p>
+      <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <p>Nenhum usuário encontrado.</p>
+      </div>
     {/if}
   </div>
 {/if}

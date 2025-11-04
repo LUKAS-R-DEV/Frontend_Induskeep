@@ -1,6 +1,10 @@
 <script>
   import '$lib/styles/ordens-cadastro.css';
   import { OrdersApi } from '$lib/api/orders';
+  import { onMount } from 'svelte';
+  import { MachinesApi } from '$lib/api/machines';
+  import { UserApi } from '$lib/api/users';
+  import { NotificationsApi } from '$lib/api/notifications';
   import { goto } from '$app/navigation';
 
   // Campos necessários para criar ordem conforme seu backend
@@ -8,24 +12,21 @@
   let description = '';
   let machineId = '';
   let userId = '';
+  let machines=[];
+  let users=[];
   let status = 'PENDING';
 
   let loading = false;
   let error = '';
 
-  // ⚙️ Exemplo de dados estáticos (substitua por fetch futuro)
-  const machines = [
-    { id: '11902ccc-e1cf-4c47-9fea-6316ae0a3e67', name: 'Compressor A12' },
-    { id: '2bd83846-2c34-4073-a39f-348bf86ef2f4', name: 'Esteira X55' },
-    { id: '9cb2e6a0-023d-42d5-8ca7-7d7bf8ced1a0', name: 'Máquina de Moldagem' }
-  ];
-
-  const users = [
-    { id: 'a5718035-b24f-49f9-b8d7-de7c9e5a4726', name: 'Lucas Técnico' },
-    { id: '411ecedc-a4b6-452c-8fd9-f1887259d041', name: 'Carlos Silva' }
-  ];
-
-  // Função de envio
+  onMount(async () => {
+    const dataMachines = await MachinesApi.list();
+    const dataUsers = await UserApi.list();
+    machines=Array.isArray(dataMachines) ? dataMachines : [];
+    users = (Array.isArray(dataUsers) ? dataUsers : []).filter(
+      (u) => u.role === "TECHNICIAN"
+    );
+    })
   async function handleSubmit(e) {
     e.preventDefault();
     loading = true;
@@ -36,6 +37,14 @@
       await OrdersApi.create(payload);
 
       alert('✅ Ordem de Serviço criada com sucesso!');
+
+      const notificationPayload = {
+        title: 'Nova Ordem de Serviço',
+        message: `Nova ordem de serviço criada: ${title}`,
+        userId: userId,
+      };
+      await NotificationsApi.create(notificationPayload);
+
       goto('/ordens');
     } catch (err) {
       console.error(err);

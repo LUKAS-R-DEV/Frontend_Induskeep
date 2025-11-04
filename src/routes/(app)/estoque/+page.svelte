@@ -87,14 +87,20 @@
     s === 'normal' ? 'Normal' : s === 'baixo' ? 'Baixo' : 'Crítico';
 </script>
 
-<div class="header">
-  <h1>Estoque</h1>
+<div class="page-header">
+  <h1>📦 Estoque</h1>
 </div>
 
 {#if loading}
-  <div class="loading">Carregando dados...</div>
+  <div class="loading-state">
+    <i class="fas fa-spinner fa-spin"></i>
+    <p>Carregando dados...</p>
+  </div>
 {:else if error}
-  <div class="error">⚠️ {error}</div>
+  <div class="error-state">
+    <i class="fas fa-exclamation-circle"></i>
+    <p>{error}</p>
+  </div>
 {:else}
   <!-- Barra de ações e filtros -->
   <div class="page-actions">
@@ -103,10 +109,10 @@
       <input type="text" placeholder="Buscar peça..." bind:value={busca} />
     </div>
     <div>
-      <button class="btn" on:click={() => goto('/estoque/cadastro')}>
+      <button class="btn-primary" on:click={() => goto('/estoque/cadastro')}>
         <i class="fas fa-plus"></i> Nova Peça
       </button>
-      <button class="btn" on:click={() => goto('/estoque/movimentacoes')}>
+      <button class="btn-primary" on:click={() => goto('/estoque/movimentacoes')}>
         <i class="fas fa-list"></i> Movimentações
       </button>
     </div>
@@ -149,9 +155,10 @@
   </div>
 
   <!-- Tabela de peças -->
-  <div class="section">
+  <div class="page-section">
     <h2>Peças em Estoque</h2>
-    <table>
+    <div class="table-wrapper">
+      <table class="standard-table">
       <thead>
         <tr>
           <th>Código</th>
@@ -164,7 +171,14 @@
       </thead>
       <tbody>
         {#if pecasFiltradas.length === 0}
-          <tr><td colspan="6">Nenhum registro encontrado.</td></tr>
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 2rem;">
+              <div class="empty-state" style="padding: 0; box-shadow: none; background: transparent;">
+                <i class="fas fa-box-open"></i>
+                <p>Nenhum registro encontrado.</p>
+              </div>
+            </td>
+          </tr>
         {:else}
           {#each pecasFiltradas as p}
             <tr class={p.status}>
@@ -179,12 +193,14 @@
         {/if}
       </tbody>
     </table>
+    </div>
   </div>
 
   <!-- Últimas movimentações -->
-  <div class="section">
+  <div class="page-section">
     <h2>Últimas Movimentações</h2>
-    <table>
+    <div class="table-wrapper">
+      <table class="standard-table">
       <thead>
         <tr>
           <th>Data</th>
@@ -212,6 +228,7 @@
         {/each}
       </tbody>
     </table>
+    </div>
   </div>
 {/if}
 

@@ -267,3 +267,17 @@ tr:hover {
     flex: 1;
   }
 }
+.action-btn.complete {
+  color: #28a745;
+}
+
+.action-btn.complete:hover {
+  background:greenyellow;
+}
+
+.action-btn.complete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+

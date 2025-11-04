@@ -130,7 +130,7 @@
 </script>
 
 <!-- HEADER -->
-<div class="header">
+<div class="page-header">
   <h1>📊 Painel de Relatórios</h1>
 </div>
 
@@ -233,12 +233,6 @@
 {/if}
 
 <style>
-  .header {
-    background: white;
-    border-bottom: 2px solid #e5e7eb;
-    padding: 1rem 1.5rem;
-  }
-
   .relatorios-section {
     background: #fff;
     border-radius: 12px;

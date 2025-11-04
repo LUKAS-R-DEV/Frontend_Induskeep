@@ -2,17 +2,26 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>INDUSKEEP</title>
-    <!-- Importando Font Awesome -->
+
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+
+    <!-- Font Awesome (ícones globais) -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      integrity="sha512-pVnWrkGykq3Vd7W7fGd0GPl5fHOfF6E1bqRLrQYw3N+kuKQ2h5bVqv7gHD6qV4w2R4a+eG7V7VzX1kSjT9a3tw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
     />
+
     %sveltekit.head%
   </head>
-  <body data-sveltekit-preload-data="hover">
+
+  <!-- ✅ apenas UM body -->
+  <body data-sveltekit-preload-code="eager" data-sveltekit-preload-data="eager">
+    <!-- evita layout shift -->
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>

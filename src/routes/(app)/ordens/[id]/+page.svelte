@@ -2,9 +2,10 @@
   import '$lib/styles/ordens-detalhe.css';
   import { page } from '$app/stores';
   import { OrdersApi } from '$lib/api/orders';
+  import { MachineApi } from '$lib/api/machines';
+  import { UserApi } from '$lib/api/users';
   import { goto } from '$app/navigation';
 
-  // Exemplo mockado – depois você pode buscar da API
   let ordem = {
     id: '#045',
     equipamento: 'Máquina de Moldagem A',
