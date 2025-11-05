@@ -26,9 +26,12 @@
 
   onMount(async () => {
     try {
-      const stored = localStorage.getItem('user');
-      if (stored) {
-        user = JSON.parse(stored);
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          user = JSON.parse(stored);
+          console.log('🔍 Agendamentos - User carregado:', { user, role: user?.role, roleType: typeof user?.role });
+        }
       }
       await loadSchedules();
     } catch (e) {
@@ -177,8 +180,19 @@
     });
   }
 
+  // Tornar reativo para atualizar quando user mudar
+  $: canCreateSchedule = (() => {
+    if (!user || !user.role) {
+      console.log('❌ Agendamentos - canCreate: sem user ou role', { user, hasUser: !!user, hasRole: !!user?.role });
+      return false;
+    }
+    const result = hasPermission(user.role, 'CREATE_SCHEDULE');
+    console.log('🔍 Agendamentos - canCreate:', { userRole: user.role, normalized: String(user.role).toUpperCase().trim(), result });
+    return result;
+  })();
+
   function canCreate() {
-    return user && hasPermission(user.role, 'CREATE_SCHEDULE');
+    return canCreateSchedule;
   }
 </script>
 
@@ -193,12 +207,12 @@
       <button 
         class="btn-primary" 
         on:click={() => {
-          if (canCreate()) {
+          if (canCreateSchedule) {
             goto('/agendamentos/nova');
           }
         }}
-        disabled={!canCreate()}
-        title={canCreate() ? 'Criar novo agendamento' : 'Você não tem permissão para criar agendamentos'}
+        disabled={!canCreateSchedule}
+        title={canCreateSchedule ? 'Criar novo agendamento' : 'Você não tem permissão para criar agendamentos'}
       >
         <i class="fas fa-plus"></i>
         Novo Agendamento
@@ -378,7 +392,7 @@
       </div>
       <h3>Nenhum agendamento encontrado</h3>
       <p>{search ? 'Tente ajustar a busca.' : 'Comece criando um novo agendamento.'}</p>
-      {#if canCreate() && !search}
+      {#if canCreateSchedule && !search}
         <button class="btn-primary" on:click={() => goto('/agendamentos/nova')}>
           <i class="fas fa-plus"></i>
           Criar Agendamento

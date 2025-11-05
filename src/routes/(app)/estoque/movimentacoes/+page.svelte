@@ -14,9 +14,12 @@
 
   onMount(async () => {
     try {
-      const stored = localStorage.getItem('user');
-      if (stored) {
-        user = JSON.parse(stored);
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          user = JSON.parse(stored);
+          console.log('🔍 Movimentações - User carregado:', { user, role: user?.role, roleType: typeof user?.role });
+        }
       }
 
       const data = await StockApi.listMovements();
@@ -55,8 +58,20 @@
     return type === 'ENTRY' ? 'type-entry' : 'type-exit';
   }
 
+  // Tornar reativo para atualizar quando user mudar
+  $: canCreateMovement = (() => {
+    if (!user || !user.role) {
+      console.log('❌ Movimentações - canCreate: sem user ou role', { user, hasUser: !!user, hasRole: !!user?.role });
+      return false;
+    }
+    const userRole = String(user.role).toUpperCase().trim();
+    const result = userRole === 'ADMIN' || userRole === 'SUPERVISOR';
+    console.log('🔍 Movimentações - canCreate:', { userRole: user.role, normalized: userRole, result });
+    return result;
+  })();
+
   function canCreate() {
-    return user && hasPermission(user.role, 'CREATE_STOCK_MOVEMENT');
+    return canCreateMovement;
   }
 </script>
 
@@ -73,12 +88,19 @@
           <i class="fas fa-arrow-left"></i>
           Voltar
         </button>
-        {#if canCreate()}
-          <button class="btn-primary" on:click={() => goto('/estoque/movimentacoes/nova')}>
-            <i class="fas fa-plus"></i>
-            Nova Movimentação
-          </button>
-        {/if}
+        <button 
+          class="btn-primary" 
+          on:click={() => {
+            if (canCreateMovement) {
+              goto('/estoque/movimentacoes/nova');
+            }
+          }}
+          disabled={!canCreateMovement}
+          title={canCreateMovement ? 'Registrar nova movimentação' : 'Você não tem permissão para criar movimentações'}
+        >
+          <i class="fas fa-plus"></i>
+          Nova Movimentação
+        </button>
       </div>
     </div>
   </div>

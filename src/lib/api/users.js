@@ -10,10 +10,11 @@ export const UserApi = {
   get(id) {
     return apiFetch(`/auth/users/${id}`);
   },
-  register(payload) {
+  register(payload, options = {}) {
     return apiFetch("/auth/register", {
       method: "POST",
       body: JSON.stringify(payload),
+      ...options,
     });
   },
   login(credentials, options = {}) {

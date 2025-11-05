@@ -14,6 +14,7 @@
   let settingsMinStock = 5;
   let loading = false;
   let loadingData = true;
+  let error = '';
 
   onMount(async () => {
     try {
@@ -71,6 +72,8 @@
         message: `Peça "${payload.name}" cadastrada com sucesso!`,
       });
 
+      loading = false;
+      
       setTimeout(() => {
         goto('/estoque');
       }, 1000);

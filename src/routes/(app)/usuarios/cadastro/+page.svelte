@@ -15,6 +15,7 @@
   let passwordStrength = { width: '0%', color: '#94a3b8', text: 'Digite uma senha', level: 0 };
   let passwordMatch = '';
   let loading = false;
+  let error = '';
 
   function checkPasswordStrength() {
     if (!password) {
@@ -72,41 +73,84 @@
   $: if (confirmPassword) checkPasswordMatch();
 
   async function handleSubmit(e) {
-    e.preventDefault();
+    console.log('📝 handleSubmit chamado', { name, email, role, passwordLength: password?.length, confirmPasswordLength: confirmPassword?.length });
+    
+    // Reset loading e error
     loading = true;
     error = '';
 
-    if (password !== confirmPassword) {
-      feedback.set({
-        show: true,
-        type: 'error',
-        title: 'Erro',
-        message: 'As senhas não coincidem!',
-      });
-      loading = false;
-      return;
-    }
-
+    // Validações locais
+    console.log('🔍 Validando campos...', { name: !!name, email: !!email, role: !!role, password: !!password });
+    
     if (!name || !email || !role || !password) {
+      console.log('❌ Validação falhou: campos obrigatórios');
+      loading = false;
       feedback.set({
         show: true,
         type: 'error',
         title: 'Campos obrigatórios',
         message: 'Preencha todos os campos obrigatórios.',
       });
-      loading = false;
       return;
     }
 
+    console.log('🔍 Validando comprimento da senha...', { passwordLength: password.length });
+    if (password.length < 8) {
+      console.log('❌ Validação falhou: senha muito curta');
+      loading = false;
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Senha inválida',
+        message: 'A senha deve ter no mínimo 8 caracteres.',
+      });
+      return;
+    }
+
+    console.log('🔍 Validando força da senha...', { passwordStrengthLevel: passwordStrength.level });
+    if (passwordStrength.level < 2) {
+      console.log('❌ Validação falhou: senha fraca');
+      loading = false;
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Senha fraca',
+        message: 'A senha é muito fraca. Use uma combinação de letras maiúsculas, minúsculas e números.',
+      });
+      return;
+    }
+
+    console.log('🔍 Validando confirmação de senha...', { passwordsMatch: password === confirmPassword });
+    if (password !== confirmPassword) {
+      console.log('❌ Validação falhou: senhas não coincidem');
+      loading = false;
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Senhas não coincidem',
+        message: 'As senhas não coincidem. Verifique e tente novamente.',
+      });
+      return;
+    }
+
+    console.log('✅ Todas as validações passaram!');
+    
     const payload = {
-      name,
-      email,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       password,
       role: role.toUpperCase(),
     };
 
+    console.log('📦 Payload preparado:', { ...payload, password: '***' });
+
     try {
-      await UserApi.register(payload);
+      console.log('📡 Chamando UserApi.register...');
+      const result = await UserApi.register(payload, { skipFeedback: true });
+      
+      console.log('✅ Usuário cadastrado com sucesso:', result);
+      
+      loading = false;
       
       feedback.set({
         show: true,
@@ -117,15 +161,35 @@
 
       setTimeout(() => {
         goto('/usuarios');
-      }, 1000);
+      }, 1500);
     } catch (err) {
+      console.error('❌ Erro ao cadastrar usuário:', err);
+      
+      loading = false;
+      
+      // Extrai mensagem de erro mais específica
+      let errorMessage = 'Erro ao cadastrar usuário. Verifique os dados e tente novamente.';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.data?.message) {
+        errorMessage = err.data.message;
+      } else if (err.data?.error) {
+        errorMessage = err.data.error;
+      } else if (err.status === 409) {
+        errorMessage = 'Este e-mail já está cadastrado no sistema.';
+      } else if (err.status === 403) {
+        errorMessage = 'Você não tem permissão para criar usuários.';
+      } else if (err.status === 401) {
+        errorMessage = 'Sua sessão expirou. Faça login novamente.';
+      }
+      
       feedback.set({
         show: true,
         type: 'error',
-        title: 'Erro',
-        message: err.message || 'Erro ao cadastrar usuário.',
+        title: 'Erro ao cadastrar',
+        message: errorMessage,
       });
-      loading = false;
     }
   }
 
@@ -163,7 +227,7 @@
       </h2>
     </div>
 
-    <form on:submit={handleSubmit} class="form-content">
+    <form on:submit|preventDefault={handleSubmit} class="form-content">
       <!-- Row: Nome e Email -->
       <div class="form-row">
         <div class="form-group">
@@ -311,7 +375,7 @@
         <button 
           type="submit" 
           class="btn-submit" 
-          disabled={loading || passwordStrength.level < 2 || password !== confirmPassword}
+          disabled={loading}
         >
           {#if loading}
             <i class="fas fa-spinner fa-spin"></i>

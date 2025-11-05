@@ -25,9 +25,12 @@
 
   onMount(async () => {
     try {
-      const stored = localStorage.getItem('user');
-      if (stored) {
-        user = JSON.parse(stored);
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          user = JSON.parse(stored);
+          console.log('🔍 Ordens - User carregado:', { user, role: user?.role, roleType: typeof user?.role });
+        }
       }
       const data = await OrdersApi.list();
       ordens = Array.isArray(data) ? data : [];
@@ -171,8 +174,19 @@
     });
   }
 
+  // Tornar reativo para atualizar quando user mudar
+  $: canCreateOrder = (() => {
+    if (!user || !user.role) {
+      console.log('❌ Ordens - canCreate: sem user ou role', { user, hasUser: !!user, hasRole: !!user?.role });
+      return false;
+    }
+    const result = hasPermission(user.role, 'CREATE_ORDER');
+    console.log('🔍 Ordens - canCreate:', { userRole: user.role, normalized: String(user.role).toUpperCase().trim(), result });
+    return result;
+  })();
+
   function canCreate() {
-    return user && hasPermission(user.role, 'CREATE_ORDER');
+    return canCreateOrder;
   }
 
   function canUpdate() {
@@ -191,12 +205,12 @@
       <button 
         class="btn-primary" 
         on:click={() => {
-          if (canCreate()) {
+          if (canCreateOrder) {
             goto('/ordens/cadastro');
           }
         }}
-        disabled={!canCreate()}
-        title={canCreate() ? 'Criar nova ordem de serviço' : 'Você não tem permissão para criar ordens'}
+        disabled={!canCreateOrder}
+        title={canCreateOrder ? 'Criar nova ordem de serviço' : 'Você não tem permissão para criar ordens'}
       >
         <i class="fas fa-plus"></i>
         Nova Ordem

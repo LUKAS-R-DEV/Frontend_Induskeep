@@ -5,9 +5,9 @@
   import { canAccessRoute, hasPermission, isAdmin } from '$lib/utils/permissions.js';
 
   let user = null;
-  let currentPath = '';
   let sidebarOpen = false;
 
+  // Tornar reativo para atualizar automaticamente quando a rota mudar
   $: currentPath = $page.url.pathname;
 
   // Função para carregar user (apenas no browser)
@@ -185,12 +185,26 @@
     console.log('Sidebar: Visible items', visibleItems.map(i => i.label));
   }
 
+  // Função para verificar se um item está ativo
   function isActive(href) {
+    // Para dashboard, apenas exata match
     if (href === '/dashboard') {
       return currentPath === '/dashboard';
     }
+    // Para outras rotas, verifica se começa com o href
     return currentPath.startsWith(href);
   }
+  
+  // Criar um mapa reativo de estados ativos para cada item do menu
+  // Isso força o Svelte a recalcular quando currentPath mudar
+  $: activeStates = menuItems.reduce((acc, item) => {
+    if (item.href === '/dashboard') {
+      acc[item.href] = currentPath === '/dashboard';
+    } else {
+      acc[item.href] = currentPath.startsWith(item.href);
+    }
+    return acc;
+  }, {});
 
   function handleLogout() {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -228,7 +242,7 @@
             <li class="menu-item">
               <a 
                 href={item.href} 
-                class="menu-link {isActive(item.href) ? 'active' : ''}"
+                class="menu-link {activeStates[item.href] ? 'active' : ''}"
                 data-sveltekit-preload-data="hover"
                 on:click={closeSidebar}
               >

@@ -105,14 +105,6 @@
           <h1 class="page-title">Dashboard</h1>
           <p class="page-subtitle">Visão geral do sistema de manutenção</p>
         </div>
-        <div class="header-actions">
-          {#if canCreate()}
-            <button class="btn-primary" on:click={() => goto('/ordens/cadastro')}>
-              <i class="fas fa-plus"></i>
-              Nova Ordem
-            </button>
-          {/if}
-        </div>
       </div>
     </div>
 

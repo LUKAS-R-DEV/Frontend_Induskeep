@@ -54,9 +54,24 @@ export const RoutePermissions = {
  * Verifica se o usuário tem uma permissão específica
  */
 export function hasPermission(userRole, permission) {
-  if (!userRole) return false;
+  if (!userRole) {
+    console.log('❌ hasPermission: sem userRole', { userRole, permission });
+    return false;
+  }
   
-  const permissions = RolePolicy[userRole] || [];
+  // Normaliza o role para garantir comparação correta (case-insensitive)
+  const normalizedRole = String(userRole).toUpperCase().trim();
+  
+  const permissions = RolePolicy[normalizedRole] || [];
+  
+  console.log('🔍 hasPermission:', { 
+    userRole, 
+    normalizedRole, 
+    permission, 
+    permissions, 
+    hasAll: permissions.includes("ALL"),
+    hasPermission: permissions.includes(permission)
+  });
   
   // ADMIN tem acesso total
   if (permissions.includes("ALL")) {
@@ -98,13 +113,16 @@ export function getUserPermissions(userRole) {
  * Verifica se o usuário é ADMIN
  */
 export function isAdmin(userRole) {
-  return userRole === "ADMIN";
+  if (!userRole) return false;
+  return String(userRole).toUpperCase().trim() === "ADMIN";
 }
 
 /**
  * Verifica se o usuário é SUPERVISOR ou ADMIN
  */
 export function isSupervisorOrAdmin(userRole) {
-  return userRole === "SUPERVISOR" || userRole === "ADMIN";
+  if (!userRole) return false;
+  const normalizedRole = String(userRole).toUpperCase().trim();
+  return normalizedRole === "SUPERVISOR" || normalizedRole === "ADMIN";
 }
 
