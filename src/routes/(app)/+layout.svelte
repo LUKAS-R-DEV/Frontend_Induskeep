@@ -3,6 +3,7 @@
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import GlobalFeedback from '$lib/components/GlobalFeedback.svelte';
+  import ToastContainer from '$lib/components/ToastContainer.svelte';
   import '$lib/styles/global.css';
 
   import { onMount } from 'svelte';
@@ -28,6 +29,9 @@
 
     <!-- 💬 Feedback Global -->
     <GlobalFeedback />
+    
+    <!-- 🍞 Toast Container -->
+    <ToastContainer />
   </div>
 </div>
 

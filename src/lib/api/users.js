@@ -16,10 +16,11 @@ export const UserApi = {
       body: JSON.stringify(payload),
     });
   },
-  login(credentials) {
+  login(credentials, options = {}) {
     return apiFetch("/auth/login", {
       method: "POST",
       body: JSON.stringify(credentials),
+      ...options,
     });
   },
   update(id, payload) {
