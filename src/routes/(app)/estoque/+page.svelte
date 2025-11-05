@@ -6,20 +6,25 @@
   import { StockApi } from '$lib/api/stock';
   import { SettingsApi } from '$lib/api/settings';
 
+  import { isAdmin } from '$lib/utils/permissions.js';
+
   let loading = true;
   let error = '';
-
   let pecas = [];
   let movimentacoes = [];
-
   let busca = '';
   let filtroStatus = '';
   let filtroCategoria = '';
   let minStockThreshold = 5;
+  let user = null;
 
   onMount(async () => {
     try {
-      // busca dados da API em paralelo
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        user = JSON.parse(stored);
+      }
+
       const [settings, pieces, movements] = await Promise.all([
         SettingsApi.get(),
         PieceApi.list(),
@@ -28,7 +33,6 @@
 
       minStockThreshold = settings?.minStockThreshold ?? 5;
 
-      // processa peças conforme API
       pecas = (pieces || []).map((p) => ({
         id: p.id,
         codigo: p.code,
@@ -53,9 +57,9 @@
     }
   });
 
-  // helpers
   const moedaBR = (v) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+  
   const dataBR = (v) =>
     new Date(v).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -65,7 +69,6 @@
       minute: '2-digit',
     });
 
-  // filtros reativos
   $: pecasFiltradas = pecas.filter(
     (p) =>
       (!filtroStatus || p.status === filtroStatus) &&
@@ -77,199 +80,264 @@
         p.nome.toLowerCase().includes(busca.toLowerCase()))
   );
 
-  // métricas
   $: totalSkus = pecas.length;
   $: totalValor = pecas.reduce((acc, p) => acc + p.quantidade * p.valorUnit, 0);
   $: itensBaixo = pecas.filter((p) => p.status === 'baixo').length;
   $: itensCritico = pecas.filter((p) => p.status === 'critico').length;
 
-  const labelStatus = (s) =>
-    s === 'normal' ? 'Normal' : s === 'baixo' ? 'Baixo' : 'Crítico';
+  function labelStatus(s) {
+    return s === 'normal' ? 'Normal' : s === 'baixo' ? 'Baixo' : 'Crítico';
+  }
+
+  function getStatusClass(status) {
+    return `status-${status}`;
+  }
 </script>
 
-<div class="page-header">
-  <h1>📦 Estoque</h1>
-</div>
-
-{#if loading}
-  <div class="loading-state">
-    <i class="fas fa-spinner fa-spin"></i>
-    <p>Carregando dados...</p>
-  </div>
-{:else if error}
-  <div class="error-state">
-    <i class="fas fa-exclamation-circle"></i>
-    <p>{error}</p>
-  </div>
-{:else}
-  <!-- Barra de ações e filtros -->
-  <div class="page-actions">
-    <div class="search-bar">
-      <i class="fas fa-search"></i>
-      <input type="text" placeholder="Buscar peça..." bind:value={busca} />
-    </div>
-    <div>
-      <button class="btn-primary" on:click={() => goto('/estoque/cadastro')}>
-        <i class="fas fa-plus"></i> Nova Peça
-      </button>
-      <button class="btn-primary" on:click={() => goto('/estoque/movimentacoes')}>
-        <i class="fas fa-list"></i> Movimentações
-      </button>
-    </div>
-  </div>
-
-  <div class="filters">
-    <div class="filter-group">
-      <label>Status</label>
-      <select bind:value={filtroStatus}>
-        <option value="">Todos</option>
-        <option value="normal">Normal</option>
-        <option value="baixo">Baixo</option>
-        <option value="critico">Crítico</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Categoria / Nome</label>
-      <input type="text" placeholder="Filtrar por nome ou código" bind:value={filtroCategoria} />
-    </div>
-  </div>
-
-  <!-- Métricas -->
-  <div class="cards">
-    <div class="card">
-      <h3>Total de Itens</h3>
-      <div class="number">{totalSkus}</div>
-    </div>
-    <div class="card">
-      <h3>Valor Total</h3>
-      <div class="number">{moedaBR(totalValor)}</div>
-    </div>
-    <div class="card baixo">
-      <h3>Baixo Estoque</h3>
-      <div class="number">{itensBaixo}</div>
-    </div>
-    <div class="card critico">
-      <h3>Críticos</h3>
-      <div class="number">{itensCritico}</div>
-    </div>
-  </div>
-
-  <!-- Tabela de peças -->
-  <div class="page-section">
-    <h2>Peças em Estoque</h2>
-    <div class="table-wrapper">
-      <table class="standard-table">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Nome</th>
-          <th>Qtd.</th>
-          <th>Mínimo</th>
-          <th>Status</th>
-          <th>Valor Unit.</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#if pecasFiltradas.length === 0}
-          <tr>
-            <td colspan="6" style="text-align: center; padding: 2rem;">
-              <div class="empty-state" style="padding: 0; box-shadow: none; background: transparent;">
-                <i class="fas fa-box-open"></i>
-                <p>Nenhum registro encontrado.</p>
-              </div>
-            </td>
-          </tr>
-        {:else}
-          {#each pecasFiltradas as p}
-            <tr class={p.status}>
-              <td>{p.codigo}</td>
-              <td>{p.nome}</td>
-              <td>{p.quantidade}</td>
-              <td>{p.minimo}</td>
-              <td><span class={"status-estoque " + p.status}>{labelStatus(p.status)}</span></td>
-              <td>{moedaBR(p.valorUnit)}</td>
-            </tr>
-          {/each}
+<div class="stock-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1 class="page-title">Estoque</h1>
+        <p class="page-subtitle">Gerencie peças e movimentações do estoque</p>
+      </div>
+      <div class="header-actions">
+        {#if isAdmin(user?.role)}
+          <button class="btn-primary" on:click={() => goto('/estoque/cadastro')}>
+            <i class="fas fa-plus"></i>
+            Nova Peça
+          </button>
         {/if}
-      </tbody>
-    </table>
+        <button class="btn-secondary" on:click={() => goto('/estoque/movimentacoes')}>
+          <i class="fas fa-list"></i>
+          Movimentações
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- Últimas movimentações -->
-  <div class="page-section">
-    <h2>Últimas Movimentações</h2>
-    <div class="table-wrapper">
-      <table class="standard-table">
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Peça</th>
-          <th>Tipo</th>
-          <th>Qtd.</th>
-          <th>Usuário</th>
-          <th>Observação</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each movimentacoes.slice(0, 10) as m}
-          <tr>
-            <td>{dataBR(m.movedAt)}</td>
-            <td>{m.piece?.name}</td>
-            <td>
-              <span class={"mov-type " + m.type.toLowerCase()}>
-                {m.type === 'ENTRY' ? 'Entrada' : 'Saída'}
-              </span>
-            </td>
-            <td>{m.quantity}</td>
-            <td>{m.user?.name}</td>
-            <td>{m.notes || '-'}</td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+  <!-- Loading State -->
+  {#if loading}
+    <div class="loading-state">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>Carregando dados do estoque...</p>
     </div>
-  </div>
-{/if}
+  {:else if error}
+    <div class="error-state">
+      <div class="error-icon">
+        <i class="fas fa-exclamation-circle"></i>
+      </div>
+      <h3>Erro ao carregar dados</h3>
+      <p>{error}</p>
+      <button class="btn-retry" on:click={() => window.location.reload()}>
+        <i class="fas fa-redo"></i>
+        Tentar novamente
+      </button>
+    </div>
+  {:else}
+    <!-- Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon total">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <div class="metric-content">
+          <h3 class="metric-label">Total de Itens</h3>
+          <div class="metric-value">{totalSkus}</div>
+          <p class="metric-description">SKUs cadastrados</p>
+        </div>
+      </div>
 
-<style>
-  .loading, .error {
-    text-align: center;
-    margin: 2rem 0;
-  }
+      <div class="metric-card value">
+        <div class="metric-icon money">
+          <i class="fas fa-dollar-sign"></i>
+        </div>
+        <div class="metric-content">
+          <h3 class="metric-label">Valor Total</h3>
+          <div class="metric-value">{moedaBR(totalValor)}</div>
+          <p class="metric-description">Valor em estoque</p>
+        </div>
+      </div>
 
-  .status-estoque.normal { color: #15803d; font-weight: bold; }
-  .status-estoque.baixo { color: #ca8a04; font-weight: bold; }
-  .status-estoque.critico { color: #b91c1c; font-weight: bold; }
+      <div class="metric-card warning">
+        <div class="metric-icon alert">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="metric-content">
+          <h3 class="metric-label">Baixo Estoque</h3>
+          <div class="metric-value">{itensBaixo}</div>
+          <p class="metric-description">Itens abaixo do mínimo</p>
+        </div>
+      </div>
 
-  .mov-type.entry { color: #16a34a; font-weight: bold; }
-  .mov-type.exit { color: #dc2626; font-weight: bold; }
+      <div class="metric-card critical">
+        <div class="metric-icon danger">
+          <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="metric-content">
+          <h3 class="metric-label">Críticos</h3>
+          <div class="metric-value">{itensCritico}</div>
+          <p class="metric-description">Itens sem estoque</p>
+        </div>
+      </div>
+    </div>
 
-  tr.critico { background: #fee2e2; }
-  tr.baixo { background: #fef9c3; }
+    <!-- Filters -->
+    <div class="filters-card">
+      <div class="search-wrapper">
+        <i class="fas fa-search search-icon"></i>
+        <input 
+          type="text" 
+          class="search-input"
+          placeholder="Buscar por código ou nome..." 
+          bind:value={busca} 
+        />
+      </div>
 
-  .cards {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin: 1.5rem 0;
-  }
+      <div class="filters-row">
+        <div class="filter-item">
+          <label for="filtroStatus">
+            <i class="fas fa-filter"></i>
+            Status
+          </label>
+          <select id="filtroStatus" bind:value={filtroStatus} class="filter-select">
+            <option value="">Todos os status</option>
+            <option value="normal">Normal</option>
+            <option value="baixo">Baixo</option>
+            <option value="critico">Crítico</option>
+          </select>
+        </div>
 
-  .card {
-    flex: 1;
-    min-width: 200px;
-    background: #fff;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  }
+        <div class="filter-item">
+          <label for="filtroCategoria">
+            <i class="fas fa-tag"></i>
+            Categoria / Nome
+          </label>
+          <input 
+            type="text" 
+            id="filtroCategoria"
+            class="filter-input"
+            placeholder="Filtrar por nome ou código" 
+            bind:value={filtroCategoria} 
+          />
+        </div>
 
-  .card.baixo { background: #fff7e6; }
-  .card.critico { background: #ffe6e6; }
+        {#if busca || filtroStatus || filtroCategoria}
+          <button class="btn-clear-filters" on:click={() => { busca = ''; filtroStatus = ''; filtroCategoria = ''; }}>
+            <i class="fas fa-times"></i>
+            Limpar Filtros
+          </button>
+        {/if}
+      </div>
+    </div>
 
-  .card .number {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-top: .5rem;
-  }
-</style>
+    <!-- Stock List -->
+    <div class="stock-card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <i class="fas fa-boxes"></i>
+          Peças em Estoque ({pecasFiltradas.length})
+        </h2>
+      </div>
+
+      {#if pecasFiltradas.length > 0}
+        <div class="stock-list">
+          {#each pecasFiltradas as p}
+            <div class="stock-item {getStatusClass(p.status)}">
+              <div class="stock-icon">
+                <i class="fas fa-box"></i>
+              </div>
+              <div class="stock-info">
+                <div class="stock-header">
+                  <h3 class="stock-name">{p.nome}</h3>
+                  <span class="stock-code">{p.codigo}</span>
+                </div>
+                <div class="stock-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Quantidade:</span>
+                    <span class="detail-value {p.status}">{p.quantidade}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Mínimo:</span>
+                    <span class="detail-value">{p.minimo}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Valor Unit.:</span>
+                    <span class="detail-value">{moedaBR(p.valorUnit)}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="stock-status">
+                <span class="status-badge {getStatusClass(p.status)}">
+                  {labelStatus(p.status)}
+                </span>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-box-open"></i>
+          </div>
+          <h3>Nenhuma peça encontrada</h3>
+          <p>{busca || filtroStatus || filtroCategoria ? 'Tente ajustar os filtros de busca.' : 'Comece cadastrando uma nova peça.'}</p>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Recent Movements -->
+    {#if movimentacoes.length > 0}
+      <div class="movements-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <i class="fas fa-exchange-alt"></i>
+            Últimas Movimentações
+          </h2>
+          <a href="/estoque/movimentacoes" class="section-link">
+            Ver todas
+            <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+
+        <div class="movements-list">
+          {#each movimentacoes.slice(0, 10) as m}
+            <div class="movement-item">
+              <div class="movement-icon {m.type.toLowerCase()}">
+                <i class="fas fa-{m.type === 'ENTRY' ? 'arrow-down' : 'arrow-up'}"></i>
+              </div>
+              <div class="movement-info">
+                <h4 class="movement-piece">{m.piece?.name || 'N/A'}</h4>
+                <div class="movement-meta">
+                  <span class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    {dataBR(m.movedAt)}
+                  </span>
+                  <span class="meta-item">
+                    <i class="fas fa-user"></i>
+                    {m.user?.name || 'N/A'}
+                  </span>
+                  {#if m.notes}
+                    <span class="meta-item">
+                      <i class="fas fa-comment"></i>
+                      {m.notes}
+                    </span>
+                  {/if}
+                </div>
+              </div>
+              <div class="movement-details">
+                <span class="movement-type {m.type.toLowerCase()}">
+                  {m.type === 'ENTRY' ? 'Entrada' : 'Saída'}
+                </span>
+                <span class="movement-quantity">{m.quantity}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  {/if}
+</div>

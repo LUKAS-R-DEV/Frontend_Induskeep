@@ -6,37 +6,51 @@
   import { UserApi } from '$lib/api/users';
   import { NotificationsApi } from '$lib/api/notifications';
   import { goto } from '$app/navigation';
+  import { feedback } from '$lib/stores/feedback.stores.js';
 
-  // Campos necessários para criar ordem conforme seu backend
   let title = '';
   let description = '';
   let machineId = '';
   let userId = '';
-  let machines=[];
-  let users=[];
+  let machines = [];
+  let users = [];
   let status = 'PENDING';
-
   let loading = false;
   let error = '';
+  let loadingData = true;
 
   onMount(async () => {
-    const dataMachines = await MachinesApi.list();
-    const dataUsers = await UserApi.list();
-    machines=Array.isArray(dataMachines) ? dataMachines : [];
-    users = (Array.isArray(dataUsers) ? dataUsers : []).filter(
-      (u) => u.role === "TECHNICIAN"
-    );
-    })
+    try {
+      const [dataMachines, dataUsers] = await Promise.all([
+        MachinesApi.list(),
+        UserApi.list()
+      ]);
+      machines = Array.isArray(dataMachines) ? dataMachines : [];
+      users = (Array.isArray(dataUsers) ? dataUsers : []).filter(
+        (u) => u.role === "TECHNICIAN"
+      );
+    } catch (err) {
+      error = 'Erro ao carregar dados. Tente novamente.';
+      console.error(err);
+    } finally {
+      loadingData = false;
+    }
+  });
+
   async function handleSubmit(e) {
     e.preventDefault();
     loading = true;
     error = '';
 
+    if (!title || !description || !machineId || !userId) {
+      error = 'Por favor, preencha todos os campos obrigatórios.';
+      loading = false;
+      return;
+    }
+
     try {
       const payload = { title, description, machineId, userId, status };
       await OrdersApi.create(payload);
-
-      alert('✅ Ordem de Serviço criada com sucesso!');
 
       const notificationPayload = {
         title: 'Nova Ordem de Serviço',
@@ -45,105 +59,195 @@
       };
       await NotificationsApi.create(notificationPayload);
 
-      goto('/ordens');
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Ordem de Serviço criada com sucesso!',
+      });
+
+      setTimeout(() => {
+        goto('/ordens');
+      }, 1000);
     } catch (err) {
       console.error(err);
       error = err.message || 'Falha ao salvar ordem.';
-    } finally {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: error,
+      });
       loading = false;
     }
   }
 </script>
 
-<div class="header">
-  <h1>Nova Ordem de Serviço</h1>
-</div>
-
-<div class="page-actions">
-  <button class="btn secondary" on:click={() => goto('/ordens')}>
-    <i class="fas fa-arrow-left"></i> Voltar
-  </button>
-</div>
-
-<div class="section">
-  <h2>Dados da Ordem</h2>
-
-  <form on:submit={handleSubmit}>
-    <!-- Título -->
-    <div class="form-group">
-      <label for="title">Título *</label>
-      <input
-        id="title"
-        type="text"
-        bind:value={title}
-        required
-        placeholder="Ex: Troca de correia da esteira"
-      />
-    </div>
-
-    <!-- Descrição -->
-    <div class="form-group">
-      <label for="description">Descrição *</label>
-      <textarea
-        id="description"
-        bind:value={description}
-        required
-        placeholder="Descreva o problema identificado..."
-      ></textarea>
-    </div>
-
-    <!-- Seleção de equipamento e técnico -->
-    <div class="form-row">
-      <div class="form-group">
-        <label for="machine">Equipamento *</label>
-        <select id="machine" bind:value={machineId} required>
-          <option value="">Selecione um equipamento</option>
-          {#each machines as m}
-            <option value={m.id}>{m.name}</option>
-          {/each}
-        </select>
+<div class="form-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1 class="page-title">Nova Ordem de Serviço</h1>
+        <p class="page-subtitle">Crie uma nova ordem de manutenção</p>
       </div>
-
-      <div class="form-group">
-        <label for="technician">Técnico Responsável *</label>
-        <select id="technician" bind:value={userId} required>
-          <option value="">Selecione um técnico</option>
-          {#each users as u}
-            <option value={u.id}>{u.name}</option>
-          {/each}
-        </select>
-      </div>
-    </div>
-
-    <!-- Status (padrão PENDING) -->
-    <div class="form-group">
-      <label for="status">Status</label>
-      <select id="status" bind:value={status}>
-        <option value="PENDING">Pendente</option>
-        <option value="IN_PROGRESS">Em Andamento</option>
-        <option value="COMPLETED">Concluída</option>
-        <option value="CANCELLED">Cancelada</option>
-      </select>
-    </div>
-
-    <!-- Mensagem de erro -->
-    {#if error}
-      <div class="error">⚠️ {error}</div>
-    {/if}
-
-    <!-- Botões -->
-    <div class="form-actions">
-      <button type="button" class="btn secondary" on:click={() => goto('/ordens')}>
-        Cancelar
+      <button class="btn-secondary" on:click={() => goto('/ordens')}>
+        <i class="fas fa-arrow-left"></i>
+        Voltar
       </button>
+    </div>
+  </div>
 
-      <button type="submit" class="btn" disabled={loading}>
-        {#if loading}
-          <i class="fas fa-spinner fa-spin"></i> Salvando...
-        {:else}
-          <i class="fas fa-save"></i> Salvar OS
+  {#if loadingData}
+    <div class="loading-state">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>Carregando dados...</p>
+    </div>
+  {:else}
+    <!-- Form Card -->
+    <div class="form-card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <i class="fas fa-clipboard-list"></i>
+          Dados da Ordem
+        </h2>
+      </div>
+
+      <form on:submit={handleSubmit} class="form-content">
+        <!-- Título -->
+        <div class="form-group">
+          <label for="title">
+            <i class="fas fa-heading"></i>
+            Título *
+          </label>
+          <input
+            id="title"
+            type="text"
+            bind:value={title}
+            required
+            placeholder="Ex: Troca de correia da esteira"
+            class="form-input"
+            disabled={loading}
+          />
+          <small class="form-hint">Informe um título descritivo para a ordem</small>
+        </div>
+
+        <!-- Descrição -->
+        <div class="form-group">
+          <label for="description">
+            <i class="fas fa-align-left"></i>
+            Descrição *
+          </label>
+          <textarea
+            id="description"
+            bind:value={description}
+            required
+            placeholder="Descreva o problema identificado, ações necessárias e observações..."
+            class="form-textarea"
+            rows="5"
+            disabled={loading}
+          ></textarea>
+          <small class="form-hint">Descreva detalhadamente o problema ou necessidade de manutenção</small>
+        </div>
+
+        <!-- Row: Equipamento e Técnico -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="machine">
+              <i class="fas fa-industry"></i>
+              Equipamento *
+            </label>
+            <select 
+              id="machine" 
+              bind:value={machineId} 
+              required
+              class="form-select"
+              disabled={loading}
+            >
+              <option value="">Selecione um equipamento</option>
+              {#each machines as m}
+                <option value={m.id}>{m.name} - {m.location || 'Sem localização'}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="technician">
+              <i class="fas fa-user-tie"></i>
+              Técnico Responsável *
+            </label>
+            <select 
+              id="technician" 
+              bind:value={userId} 
+              required
+              class="form-select"
+              disabled={loading}
+            >
+              <option value="">Selecione um técnico</option>
+              {#each users as u}
+                <option value={u.id}>{u.name}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div class="form-group">
+          <label for="status">
+            <i class="fas fa-flag"></i>
+            Status Inicial
+          </label>
+          <select 
+            id="status" 
+            bind:value={status}
+            class="form-select"
+            disabled={loading}
+          >
+            <option value="PENDING">Pendente</option>
+            <option value="IN_PROGRESS">Em Andamento</option>
+            <option value="COMPLETED">Concluída</option>
+            <option value="CANCELLED">Cancelada</option>
+          </select>
+          <small class="form-hint">Status inicial da ordem de serviço</small>
+        </div>
+
+        <!-- Error Message -->
+        {#if error}
+          <div class="form-message error">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>{error}</span>
+          </div>
         {/if}
-      </button>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button 
+            type="button" 
+            class="btn-cancel" 
+            on:click={() => goto('/ordens')}
+            disabled={loading}
+          >
+            <i class="fas fa-times"></i>
+            Cancelar
+          </button>
+
+          <button 
+            type="submit" 
+            class="btn-submit" 
+            disabled={loading}
+          >
+            {#if loading}
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Salvando...</span>
+            {:else}
+              <i class="fas fa-save"></i>
+              <span>Salvar Ordem</span>
+            {/if}
+          </button>
+        </div>
+      </form>
     </div>
-  </form>
+  {/if}
 </div>

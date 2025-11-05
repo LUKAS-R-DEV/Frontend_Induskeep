@@ -37,49 +37,29 @@
 
 <style>
   .app-shell {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    grid-template-rows: auto 1fr auto;
-    min-height: 100dvh;
+    display: flex;
+    min-height: 100vh;
     background: #f0f2f5;
   }
 
-  :global(.sidebar) {
-    grid-column: 1 / 2;
-    grid-row: 1 / 4;
-    position: sticky;
-    top: 0;
-    height: 100dvh;
-    overflow-y: auto;
-    background: #fff;
-    border-right: 1px solid #e5e7eb;
-  }
-
   .content-area {
-    grid-column: 2 / 3;
-    grid-row: 1 / 4;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-  }
-
-  nav {
-    grid-row: 1;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #fff;
-    border-bottom: 1px solid #e5e7eb;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: 260px;
+    transition: margin-left 0.3s ease;
   }
 
   .main {
-    grid-row: 2;
-    padding: 1rem;
+    flex: 1;
     overflow: auto;
+    padding: 0;
   }
 
-  footer {
-    grid-row: 3;
-    border-top: 1px solid #e5e7eb;
-    background: #fafafa;
+  /* Responsive */
+  @media (max-width: 920px) {
+    .content-area {
+      margin-left: 0;
+    }
   }
 </style>

@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { HistoryApi } from '$lib/api/history';
   import { ExportFactory } from '$lib/export';
+  import { feedback } from '$lib/stores/feedback.stores.js';
 
   let loading = true;
   let busca = '';
@@ -23,7 +24,6 @@
     return `${h}h ${m}m`;
   }
 
-  // ========= Carregar histórico =========
   onMount(async () => {
     try {
       const data = await HistoryApi.list();
@@ -36,7 +36,6 @@
     }
   });
 
-  // ========= Aplicar filtros =========
   function aplicarFiltros() {
     filtrado = historico.filter((item) => {
       const texto = busca.toLowerCase();
@@ -57,7 +56,6 @@
     });
   }
 
-  // ========= Limpar filtros =========
   function limparFiltros() {
     busca = '';
     filtroEquipamento = '';
@@ -66,16 +64,24 @@
     filtrado = [...historico];
   }
 
-  // ========= Exportar PDF geral =========
   async function exportarGeral() {
     try {
       await ExportFactory.reports(historico, 'pdf');
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Relatório exportado com sucesso.',
+      });
     } catch (err) {
-      alert("⚠️ Erro ao exportar: " + err.message);
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: err.message || 'Erro ao exportar relatório.',
+      });
     }
   }
-
-  // (Exportação individual removida)
 
   function getStatusClass(status) {
     if (!status) return '';
@@ -94,166 +100,160 @@
         return '';
     }
   }
+
+  function formatDate(date) {
+    if (!date) return '-';
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  $: aplicarFiltros();
 </script>
 
-<!-- Cabeçalho -->
-<div class="page-header">
-  <h1>📋 Histórico de Manutenções</h1>
-</div>
-
-<!-- Ações principais -->
-<div class="page-actions">
-  <div class="search-bar">
-    <i class="fas fa-search"></i>
-    <input
-      type="text"
-      placeholder="Buscar no histórico..."
-      bind:value={busca}
-      on:input={aplicarFiltros}
-    />
-  </div>
-  <button class="btn-primary" on:click={exportarGeral}>
-    <i class="fas fa-file-pdf"></i> Exportar Relatório Geral
-  </button>
-</div>
-
-<!-- Filtros -->
-<div class="filters">
-  <div class="filter-group">
-    <label>Equipamento</label>
-    <select bind:value={filtroEquipamento} on:change={aplicarFiltros}>
-      <option value="">Todos</option>
-      <option value="Máquina de Moldagem A">Máquina de Moldagem A</option>
-      <option value="Compressor B">Compressor B</option>
-      <option value="Prensa Hidráulica">Prensa Hidráulica</option>
-      <option value="Misturador Industrial">Misturador Industrial</option>
-      <option value="Esteira Transportadora">Esteira Transportadora</option>
-    </select>
-  </div>
-
-  <div class="filter-group">
-    <label>De</label>
-    <input type="date" bind:value={dataDe} on:change={aplicarFiltros} />
-  </div>
-
-  <div class="filter-group">
-    <label>Até</label>
-    <input type="date" bind:value={dataAte} on:change={aplicarFiltros} />
-  </div>
-
-  <div class="filter-actions">
-    <button class="btn-primary" on:click={aplicarFiltros}>
-      <i class="fas fa-filter"></i> Aplicar
-    </button>
-    <button class="btn-primary" on:click={limparFiltros} style="background: #6b7280;">
-      <i class="fas fa-eraser"></i> Limpar
-    </button>
-  </div>
-</div>
-
-<!-- Conteúdo principal -->
-{#if loading}
-  <div class="loading-state">
-    <i class="fas fa-spinner fa-spin"></i>
-    <p>Carregando histórico...</p>
-  </div>
-{:else if filtrado.length === 0}
-  <div class="empty-state">
-    <i class="fas fa-history"></i>
-    <p>Nenhum registro encontrado.</p>
-  </div>
-{:else}
-  <div class="page-section">
-    <h2>Histórico Completo</h2>
-    <div class="table-wrapper">
-      <table class="standard-table">
-      <thead>
-        <tr>
-          <th>Nº OS</th>
-          <th>Equipamento</th>
-          <th>Data Execução</th>
-          <th>Tempo</th>
-          <th>Técnico</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-  {#each filtrado as h}
-    <tr>
-      <td>{h.id || '-'}</td>
-      <td>{h.order?.machine?.name || '-'}</td>
-      <td>{h.completedAt ? new Date(h.completedAt).toLocaleDateString('pt-BR') : '-'}</td>
-      <td>{duration(h.order?.createdAt, h.completedAt)}</td>
-      <td>{h.order?.user?.name || '-'}</td>
-      <td>
-        <span class={getStatusClass(h.order?.status)}>
-          {h.order?.status === 'COMPLETED' ? 'Concluída'
-           : h.order?.status === 'CANCELLED' ? 'Cancelada'
-           : h.order?.status === 'IN_PROGRESS' ? 'Em Andamento'
-           : h.order?.status === 'PENDING' ? 'Pendente'
-           : h.order?.status || '-'}
-        </span>
-      </td>
-      <td class="actions">
-        <button class="action-btn view" title="Visualizar detalhes">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
-    </tr>
-  {/each}
-</tbody>
-
-      </table>
+<div class="history-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1 class="page-title">Histórico de Manutenções</h1>
+        <p class="page-subtitle">Visualize todas as manutenções concluídas</p>
+      </div>
+      <button class="btn-primary" on:click={exportarGeral}>
+        <i class="fas fa-file-pdf"></i>
+        Exportar Relatório
+      </button>
     </div>
   </div>
-{/if}
 
-<style>
-  /* Estilos específicos para filtros nesta página */
-  .filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: flex-end;
-    background: white;
-    padding: 1.5rem;
-    border-radius: 10px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-    margin-bottom: 1.5rem;
-  }
+  <!-- Filters -->
+  <div class="filters-card">
+    <div class="search-wrapper">
+      <i class="fas fa-search search-icon"></i>
+      <input 
+        type="text" 
+        class="search-input"
+        placeholder="Buscar no histórico..." 
+        bind:value={busca}
+      />
+    </div>
 
-  .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
+    <div class="filters-row">
+      <div class="filter-item">
+        <label for="filtroEquipamento">
+          <i class="fas fa-industry"></i>
+          Equipamento
+        </label>
+        <input 
+          type="text" 
+          id="filtroEquipamento"
+          class="filter-input"
+          placeholder="Filtrar por equipamento" 
+          bind:value={filtroEquipamento} 
+        />
+      </div>
 
-  .filter-group label {
-    font-weight: 500;
-    font-size: 0.9rem;
-    color: #374151;
-  }
+      <div class="filter-item">
+        <label for="dataDe">
+          <i class="fas fa-calendar"></i>
+          De
+        </label>
+        <input 
+          type="date" 
+          id="dataDe"
+          class="filter-input"
+          bind:value={dataDe} 
+        />
+      </div>
 
-  .filter-group input,
-  .filter-group select {
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 0.625rem 0.75rem;
-    font-size: 0.95rem;
-    transition: border-color 0.2s ease;
-  }
+      <div class="filter-item">
+        <label for="dataAte">
+          <i class="fas fa-calendar"></i>
+          Até
+        </label>
+        <input 
+          type="date" 
+          id="dataAte"
+          class="filter-input"
+          bind:value={dataAte} 
+        />
+      </div>
 
-  .filter-group input:focus,
-  .filter-group select:focus {
-    outline: none;
-    border-color: #0066cc;
-    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-  }
+      {#if busca || filtroEquipamento || dataDe || dataAte}
+        <button class="btn-clear-filters" on:click={limparFiltros}>
+          <i class="fas fa-times"></i>
+          Limpar Filtros
+        </button>
+      {/if}
+    </div>
+  </div>
 
-  .filter-actions {
-    display: flex;
-    gap: 0.75rem;
-    margin-left: auto;
-  }
-</style>
+  <!-- Loading State -->
+  {#if loading}
+    <div class="loading-state">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>Carregando histórico...</p>
+    </div>
+  {:else if filtrado.length === 0}
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i class="fas fa-history"></i>
+      </div>
+      <h3>Nenhum registro encontrado</h3>
+      <p>{busca || filtroEquipamento || dataDe || dataAte ? 'Tente ajustar os filtros de busca.' : 'Ainda não há histórico de manutenções.'}</p>
+    </div>
+  {:else}
+    <!-- History List -->
+    <div class="history-card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <i class="fas fa-history"></i>
+          Histórico ({filtrado.length})
+        </h2>
+      </div>
+
+      <div class="history-list">
+        {#each filtrado as h}
+          <div class="history-item">
+            <div class="history-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="history-content">
+              <div class="history-header">
+                <h3 class="history-title">{h.order?.title || 'Manutenção'}</h3>
+                <span class="status-badge {getStatusClass(h.order?.status)}">
+                  {h.order?.status === 'COMPLETED' ? 'Concluída' : h.order?.status || '-'}
+                </span>
+              </div>
+              <div class="history-meta">
+                <div class="meta-item">
+                  <i class="fas fa-industry"></i>
+                  <span>{h.order?.machine?.name || 'N/A'}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-user"></i>
+                  <span>{h.order?.user?.name || 'N/A'}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-calendar"></i>
+                  <span>{formatDate(h.completedAt)}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-clock"></i>
+                  <span>{duration(h.order?.createdAt, h.completedAt)}</span>
+                </div>
+              </div>
+              {#if h.notes}
+                <p class="history-notes">{h.notes}</p>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+</div>

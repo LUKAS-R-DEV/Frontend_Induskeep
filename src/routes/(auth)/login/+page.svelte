@@ -26,6 +26,7 @@
       const data = await UserApi.login({email, password}, { skipFeedback: true });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('permissions', JSON.stringify(data.permissions));
       
       feedback.set({
         show: true,

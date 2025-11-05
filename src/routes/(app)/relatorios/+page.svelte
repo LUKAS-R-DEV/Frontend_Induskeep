@@ -5,8 +5,9 @@
   import { ReportApi } from '$lib/api/reports';
   import { MachinesApi } from '$lib/api/machines';
   import { StockApi } from '$lib/api/stock';
-  import { ExportFactory } from '$lib/export'; // usa módulos de exportação
+  import { ExportFactory } from '$lib/export';
   import * as echarts from 'echarts';
+  import { feedback } from '$lib/stores/feedback.stores.js';
 
   let loading = true;
   let error = '';
@@ -16,7 +17,6 @@
   let stockMovements = [];
   let charts = {};
 
-  // KPIs derivados
   $: completionRate = overview?.totalOrders
     ? ((overview.completedOrders / overview.totalOrders) * 100).toFixed(1)
     : 0;
@@ -25,7 +25,6 @@
     : 0;
   $: pendingOrders = overview?.totalOrders - overview?.completedOrders || 0;
 
-  // ======= Carregamento inicial =======
   onMount(async () => {
     try {
       const [analyticsRes, historyRes, machinesRes, stockRes] = await Promise.allSettled([
@@ -49,10 +48,8 @@
     }
   });
 
-  // ======= Renderização dos gráficos (ECharts) =======
   function renderCharts() {
     const palette = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#6b7280'];
-    const baseFont = 14;
 
     const makeChart = (id, options) => {
       const el = document.getElementById(id);
@@ -63,7 +60,6 @@
       charts[id] = chart;
     };
 
-    // Gráficos
     makeChart('maintHistoryChart', {
       title: { text: 'Manutenções por Mês', left: 'center', textStyle: { fontSize: 18 } },
       tooltip: { trigger: 'axis' },
@@ -89,7 +85,7 @@
       series: [{
         type: 'pie',
         radius: ['45%', '75%'],
-        label: { formatter: '{b}: {d}%', fontSize: baseFont + 1 },
+        label: { formatter: '{b}: {d}%', fontSize: 15 },
         data: [
           { value: 40, name: 'Preventiva' },
           { value: 45, name: 'Corretiva' },
@@ -115,7 +111,7 @@
       series: [{
         type: 'pie',
         radius: ['50%', '78%'],
-        label: { formatter: '{b}: {d}%', fontSize: baseFont + 1 },
+        label: { formatter: '{b}: {d}%', fontSize: 15 },
         data: [
           { value: 12, name: 'Filtros' },
           { value: 9, name: 'Correias' },
@@ -127,218 +123,238 @@
       }]
     });
   }
+
+  async function exportReport(type, data) {
+    try {
+      await ExportFactory[type](data, 'pdf');
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Relatório exportado com sucesso.',
+      });
+    } catch (err) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: err.message || 'Erro ao exportar relatório.',
+      });
+    }
+  }
 </script>
 
-<!-- HEADER -->
-<div class="page-header">
-  <h1>📊 Painel de Relatórios</h1>
+<div class="reports-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1 class="page-title">Relatórios</h1>
+        <p class="page-subtitle">Análise e insights do sistema de manutenção</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  {#if loading}
+    <div class="loading-state">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>Carregando relatórios...</p>
+    </div>
+  {:else if error}
+    <div class="error-state">
+      <div class="error-icon">
+        <i class="fas fa-exclamation-circle"></i>
+      </div>
+      <h3>Erro ao carregar dados</h3>
+      <p>{error}</p>
+      <button class="btn-retry" on:click={() => window.location.reload()}>
+        <i class="fas fa-redo"></i>
+        Tentar novamente
+      </button>
+    </div>
+  {:else}
+    <!-- KPIs -->
+    <div class="kpi-section">
+      <h2 class="section-title">
+        <i class="fas fa-chart-line"></i>
+        Indicadores de Desempenho
+      </h2>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">
+            <i class="fas fa-industry"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Total de Máquinas</span>
+            <div class="kpi-value">{overview.totalMachines || 0}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">
+            <i class="fas fa-tasks"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Total de OS</span>
+            <div class="kpi-value">{overview.totalOrders || 0}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card success">
+          <div class="kpi-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Concluídas</span>
+            <div class="kpi-value">{overview.completedOrders || 0}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card primary">
+          <div class="kpi-icon">
+            <i class="fas fa-percentage"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Taxa de Conclusão</span>
+            <div class="kpi-value">{completionRate}%</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Tempo Médio (MTTR)</span>
+            <div class="kpi-value">{overview.avgRepairTime || 0} h</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">
+            <i class="fas fa-history"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Intervalo entre Falhas (MTBF)</span>
+            <div class="kpi-value">{overview.avgFailureInterval || 0} h</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">
+            <i class="fas fa-box"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Peças Usadas</span>
+            <div class="kpi-value">{overview.totalPiecesUsed || 0}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">
+            <i class="fas fa-chart-bar"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Média Peças/OS</span>
+            <div class="kpi-value">{avgPiecesPerOrder}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card warning">
+          <div class="kpi-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Ordens Pendentes</span>
+            <div class="kpi-value">{pendingOrders}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Cards -->
+    <div class="reports-section">
+      <h2 class="section-title">
+        <i class="fas fa-file-export"></i>
+        Relatórios Disponíveis
+      </h2>
+      <div class="report-cards">
+        <div class="report-card" on:click={() => exportReport('reports', historico)}>
+          <div class="report-icon primary">
+            <i class="fas fa-tools"></i>
+          </div>
+          <h3 class="report-title">Relatório de OS por Período</h3>
+          <p class="report-description">Relatório detalhado de ordens de serviço, com status e técnicos.</p>
+          <div class="report-footer">
+            <span class="report-badge">PDF, CSV</span>
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </div>
+
+        <div class="report-card" on:click={() => exportReport('inventory', stockMovements)}>
+          <div class="report-icon success">
+            <i class="fas fa-box"></i>
+          </div>
+          <h3 class="report-title">Consumo de Peças</h3>
+          <p class="report-description">Análise de consumo de peças por equipamento e tipo de manutenção.</p>
+          <div class="report-footer">
+            <span class="report-badge">PDF, CSV</span>
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </div>
+
+        <div class="report-card" on:click={() => exportReport('analytics', overview)}>
+          <div class="report-icon danger">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h3 class="report-title">Indicadores de Performance</h3>
+          <p class="report-description">KPIs de manutenção: MTBF, MTTR e disponibilidade.</p>
+          <div class="report-footer">
+            <span class="report-badge">PDF</span>
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </div>
+
+        <div class="report-card" on:click={() => exportReport('machines', machines)}>
+          <div class="report-icon warning">
+            <i class="fas fa-cogs"></i>
+          </div>
+          <h3 class="report-title">Relatório de Máquinas</h3>
+          <p class="report-description">Lista de máquinas com status, localização e OS associadas.</p>
+          <div class="report-footer">
+            <span class="report-badge">PDF, CSV</span>
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="reports-section">
+      <h2 class="section-title">
+        <i class="fas fa-chart-pie"></i>
+        Gráficos de Análise
+      </h2>
+      <div class="charts-grid">
+        <div class="chart-wrapper">
+          <div id="maintHistoryChart" class="chart-container"></div>
+        </div>
+        <div class="chart-wrapper">
+          <div id="topEquipChart" class="chart-container"></div>
+        </div>
+        <div class="chart-wrapper">
+          <div id="maintTypeChart" class="chart-container"></div>
+        </div>
+        <div class="chart-wrapper">
+          <div id="techPerfChart" class="chart-container"></div>
+        </div>
+        <div class="chart-wrapper">
+          <div id="piecesChart" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
-
-<!-- ESTADOS -->
-{#if loading}
-  <div class="loading">Carregando relatórios...</div>
-{:else if error}
-  <div class="error">⚠️ {error}</div>
-{:else}
-
-  <!-- KPI PRINCIPAIS -->
-  <section class="relatorios-section">
-    <h2>Indicadores de Desempenho</h2>
-    <div class="kpi-grid">
-      <div class="kpi"><span>Total de Máquinas</span><strong>{overview.totalMachines}</strong></div>
-      <div class="kpi"><span>Total de OS</span><strong>{overview.totalOrders}</strong></div>
-      <div class="kpi"><span>Concluídas</span><strong>{overview.completedOrders}</strong></div>
-      <div class="kpi"><span>Taxa de Conclusão</span><strong>{completionRate}%</strong></div>
-      <div class="kpi"><span>Tempo Médio (MTTR)</span><strong>{overview.avgRepairTime} h</strong></div>
-      <div class="kpi"><span>Intervalo entre Falhas (MTBF)</span><strong>{overview.avgFailureInterval} h</strong></div>
-      <div class="kpi"><span>Peças Usadas</span><strong>{overview.totalPiecesUsed}</strong></div>
-      <div class="kpi"><span>Média Peças/OS</span><strong>{avgPiecesPerOrder}</strong></div>
-      <div class="kpi"><span>Ordens Pendentes</span><strong>{pendingOrders}</strong></div>
-    </div>
-  </section>
-
-  <!-- CARDS DE EXPORTAÇÃO -->
-  <section class="relatorios-section">
-    <h2>Relatórios Disponíveis</h2>
-    <div class="cards">
-      <div class="card" on:click={() => ExportFactory.reports(historico, 'pdf')}>
-        <div class="card-header">
-          <div class="card-icon primary"><i class="fas fa-tools"></i></div>
-          <div class="card-title">Relatório de OS por Período</div>
-        </div>
-        <div class="card-description">
-          Relatório detalhado de ordens de serviço, com status e técnicos.
-        </div>
-        <div class="card-footer">
-          <span class="card-badge primary">PDF, CSV</span>
-          <i class="fas fa-chevron-right"></i>
-        </div>
-      </div>
-
-      <div class="card" on:click={() => ExportFactory.inventory(stockMovements, 'pdf')}>
-        <div class="card-header">
-          <div class="card-icon accent"><i class="fas fa-box"></i></div>
-          <div class="card-title">Consumo de Peças</div>
-        </div>
-        <div class="card-description">
-          Análise de consumo de peças por equipamento e tipo de manutenção.
-        </div>
-        <div class="card-footer">
-          <span class="card-badge primary">PDF, CSV</span>
-          <i class="fas fa-chevron-right"></i>
-        </div>
-      </div>
-
-      <div class="card" on:click={() => ExportFactory.analytics(overview, charts, 'pdf')}>
-        <div class="card-header">
-          <div class="card-icon danger"><i class="fas fa-chart-line"></i></div>
-          <div class="card-title">Indicadores de Performance</div>
-        </div>
-        <div class="card-description">
-          KPIs de manutenção: MTBF, MTTR e disponibilidade.
-        </div>
-        <div class="card-footer">
-          <span class="card-badge primary">PDF</span>
-          <i class="fas fa-chevron-right"></i>
-        </div>
-      </div>
-
-      <div class="card" on:click={() => ExportFactory.machines(machines, 'pdf')}>
-        <div class="card-header">
-          <div class="card-icon warning"><i class="fas fa-cogs"></i></div>
-          <div class="card-title">Relatório de Máquinas</div>
-        </div>
-        <div class="card-description">
-          Lista de máquinas com status, localização e OS associadas.
-        </div>
-        <div class="card-footer">
-          <span class="card-badge primary">PDF,CSV</span>
-          <i class="fas fa-chevron-right"></i>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- GRÁFICOS -->
-  <section class="relatorios-section">
-    <h2>Gráficos de Análise</h2>
-    <div class="charts-grid">
-      <div id="maintHistoryChart" class="chart-card"></div>
-      <div id="topEquipChart" class="chart-card"></div>
-      <div id="maintTypeChart" class="chart-card"></div>
-      <div id="techPerfChart" class="chart-card"></div>
-      <div id="piecesChart" class="chart-card"></div>
-    </div>
-  </section>
-{/if}
-
-<style>
-  .relatorios-section {
-    background: #fff;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin: 1.5rem 0;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  }
-
-  /* KPI GRID */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.25rem;
-  }
-
-  .kpi {
-    background: #f9fafb;
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
-  }
-
-  .kpi span { font-size: 0.95rem; color: #6b7280; }
-  .kpi strong { display: block; font-size: 1.6rem; margin-top: .3rem; color: #111827; }
-
-  /* CARDS */
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1rem;
-  }
-
-  .card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 1rem;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-    transition: all 0.2s ease;
-    cursor: pointer;
-  }
-
-  .card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.2rem;
-  }
-
-  .card-icon.primary { background: #2563eb; }
-  .card-icon.accent { background: #10b981; }
-  .card-icon.warning { background: #f59e0b; }
-  .card-icon.danger { background: #ef4444; }
-
-  .card-title { font-weight: 600; font-size: 1rem; color: #111827; }
-  .card-description { font-size: 0.9rem; color: #4b5563; margin-bottom: 0.75rem; }
-  .card-footer { display: flex; align-items: center; justify-content: space-between; color: #2563eb; font-weight: 500; }
-
-  .card-badge {
-    background: #2563eb;
-    color: #fff;
-    padding: 0.25rem 0.6rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-  }
-
-  /* CHARTS */
-  .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1rem;
-  }
-
-  .chart-card {
-    background: #f9fafb;
-    border-radius: 12px;
-    padding: 0.75rem;
-    height: 460px;
-  }
-
-  @media (max-width: 768px) {
-    .charts-grid { grid-template-columns: 1fr; }
-    .chart-card { height: 360px; }
-  }
-
-  .loading, .error {
-    text-align: center;
-    margin: 2rem 0;
-    color: #b91c1c;
-  }
-</style>

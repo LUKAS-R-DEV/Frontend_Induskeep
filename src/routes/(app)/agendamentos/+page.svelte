@@ -4,12 +4,16 @@
   import { ScheduleApi } from "$lib/api/schedule";
   import { OrdersApi } from "$lib/api/orders";
   import { goto } from "$app/navigation";
+  import { feedback } from '$lib/stores/feedback.stores.js';
+  import { hasPermission } from '$lib/utils/permissions.js';
 
   let currentDate = new Date();
   let currentView = "calendar";
   let schedules = [];
   let loading = true;
   let error = "";
+  let user = null;
+  let search = '';
 
   const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const monthNames = [
@@ -21,7 +25,15 @@
   let currentMonthLabel = "";
 
   onMount(async () => {
-    await loadSchedules();
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        user = JSON.parse(stored);
+      }
+      await loadSchedules();
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   async function loadSchedules() {
@@ -40,13 +52,25 @@
 
   $: if (!loading && schedules.length >= 0) generateCalendar();
 
+  $: filteredSchedules = schedules.filter(s => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (s.machine?.name || '').toLowerCase().includes(q) ||
+      (s.user?.name || '').toLowerCase().includes(q) ||
+      (s.notes || '').toLowerCase().includes(q)
+    );
+  });
+
   function generateCalendar() {
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     const firstDayOfWeek = firstDay.getDay();
 
     const daysArray = [];
-    for (let i = 0; i < firstDayOfWeek; i++) daysArray.push({ label: "", other: true, events: [] });
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      daysArray.push({ label: "", other: true, events: [] });
+    }
 
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -55,8 +79,9 @@
         .map((s) => ({
           id: s.id,
           text: s.machine?.name || "Agendamento",
-          color: "var(--primary)",
-          notes: s.notes
+          color: "#3b82f6",
+          notes: s.notes,
+          schedule: s
         }));
       daysArray.push({ label: day, events, other: false });
     }
@@ -66,25 +91,50 @@
   }
 
   function previousMonth() {
-    currentDate.setMonth(currentDate.getMonth() - 1);
+    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     generateCalendar();
   }
+  
   function nextMonth() {
-    currentDate.setMonth(currentDate.getMonth() + 1);
+    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
     generateCalendar();
   }
+  
   function goToToday() {
     currentDate = new Date();
     generateCalendar();
   }
 
   async function deleteSchedule(id) {
-    if (!confirm("Deseja realmente excluir este agendamento?")) return;
     try {
+      const confirmed = await new Promise((resolve) => {
+        feedback.set({
+          show: true,
+          type: 'confirm',
+          title: 'Excluir agendamento',
+          message: 'Deseja realmente excluir este agendamento?',
+          confirmCallback: () => resolve(true)
+        });
+      });
+
+      if (!confirmed) return;
+
       await ScheduleApi.delete(id);
       await loadSchedules();
+      
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Agendamento excluído com sucesso.',
+      });
     } catch (err) {
-      alert("❌ Erro ao remover: " + err.message);
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: err.message || 'Erro ao remover agendamento.',
+      });
     }
   }
 
@@ -97,217 +147,243 @@
         userId: schedule.userId,
         scheduleId: schedule.id
       });
-      alert("🚀 Ordem de manutenção iniciada!");
+      
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Ordem de manutenção iniciada com sucesso!',
+      });
+      
       await ScheduleApi.delete(schedule.id);
       await loadSchedules();
     } catch (err) {
-      alert("❌ Erro ao iniciar manutenção: " + err.message);
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: err.message || 'Erro ao iniciar manutenção.',
+      });
     }
+  }
+
+  function formatDate(date) {
+    return new Date(date).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function canCreate() {
+    return user && hasPermission(user.role, 'CREATE_SCHEDULE');
   }
 </script>
 
-<div class="page-header">
-  <h1>📅 Agendamentos</h1>
-</div>
-
-<div class="page-actions">
-  <div class="search-bar">
-    <i class="fas fa-search"></i>
-    <input type="text" placeholder="Buscar agendamentos..." />
-  </div>
-  <button class="btn-primary" on:click={() => goto('/agendamentos/nova')}>
-    <i class="fas fa-plus"></i> Novo Agendamento
-  </button>
-</div>
-
-<div class="view-toggle">
-  <div
-    class="view-option {currentView === 'calendar' ? 'active' : ''}"
-    on:click={() => (currentView = 'calendar')}
-  >
-    <i class="fas fa-calendar"></i> Calendário
-  </div>
-  <div
-    class="view-option {currentView === 'list' ? 'active' : ''}"
-    on:click={() => (currentView = 'list')}
-  >
-    <i class="fas fa-list"></i> Lista
-  </div>
-</div>
-
-{#if loading}
-  <div class="loading-state">
-    <i class="fas fa-spinner fa-spin"></i>
-    <p>Carregando agendamentos...</p>
-  </div>
-{:else if error}
-  <div class="error-state">
-    <i class="fas fa-exclamation-circle"></i>
-    <p>{error}</p>
-  </div>
-{:else if currentView === "calendar"}
-  <div class="page-section calendar-view">
-    <div class="calendar-header">
-      <div class="calendar-nav">
-        <button class="calendar-nav-btn" on:click={previousMonth} title="Mês anterior">
-          <i class="fas fa-chevron-left"></i>
-        </button>
-        <div class="current-month">{currentMonthLabel}</div>
-        <button class="calendar-nav-btn" on:click={nextMonth} title="Próximo mês">
-          <i class="fas fa-chevron-right"></i>
-        </button>
+<div class="schedules-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div>
+        <h1 class="page-title">Agendamentos</h1>
+        <p class="page-subtitle">Gerencie agendamentos de manutenção preventiva</p>
       </div>
-      <button class="btn-primary" on:click={goToToday}>
-        <i class="fas fa-calendar-day"></i> Hoje
+      <button 
+        class="btn-primary" 
+        on:click={() => {
+          if (canCreate()) {
+            goto('/agendamentos/nova');
+          }
+        }}
+        disabled={!canCreate()}
+        title={canCreate() ? 'Criar novo agendamento' : 'Você não tem permissão para criar agendamentos'}
+      >
+        <i class="fas fa-plus"></i>
+        Novo Agendamento
       </button>
     </div>
-
-    <div class="calendar-grid">
-      {#each days as day}
-        <div class="calendar-day-header">{day}</div>
-      {/each}
-
-      {#each calendarDays as d}
-        <div class="calendar-day {d.other ? 'other-month' : ''}">
-          {#if d.label}
-            <div class="day-number">{d.label}</div>
-            {#if d.events.length > 0}
-              {#each d.events as e}
-                <div
-                  class="schedule-item"
-                  style="background: {e.color}"
-                  on:click={() =>
-                    alert(`Agendamento: ${e.text}\nNotas: ${e.notes || "Sem observações."}`)
-                  }
-                  title="{e.text}"
-                >
-                  {e.text}
-                </div>
-              {/each}
-            {/if}
-          {/if}
-        </div>
-      {/each}
-    </div>
   </div>
-{:else}
-  <div class="page-section">
-    <h2>Lista de Agendamentos</h2>
-    {#if schedules.length === 0}
-      <div class="empty-state">
-        <i class="fas fa-calendar-times"></i>
-        <p>Nenhum agendamento encontrado.</p>
-      </div>
-    {:else}
-      <div class="table-wrapper">
-        <table class="standard-table">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Máquina</th>
-              <th>Usuário</th>
-              <th>Observações</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each schedules as s}
-              <tr>
-                <td>{new Date(s.date).toLocaleString('pt-BR')}</td>
-                <td>{s.machine?.name || "—"}</td>
-                <td>{s.user?.name || "—"}</td>
-                <td>{s.notes || "—"}</td>
-                <td><span class="status-scheduled">Agendado</span></td>
-                <td class="actions">
-                  <button class="action-btn start" on:click={() => startMaintenance(s)} title="Iniciar manutenção">
-                    <i class="fas fa-play"></i>
-                  </button>
-                  <button class="action-btn delete" on:click={() => deleteSchedule(s.id)} title="Excluir">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+
+  <!-- View Toggle -->
+  <div class="view-toggle-card">
+    <div class="view-toggle">
+      <button
+        class="view-option {currentView === 'calendar' ? 'active' : ''}"
+        on:click={() => (currentView = 'calendar')}
+      >
+        <i class="fas fa-calendar"></i>
+        Calendário
+      </button>
+      <button
+        class="view-option {currentView === 'list' ? 'active' : ''}"
+        on:click={() => (currentView = 'list')}
+      >
+        <i class="fas fa-list"></i>
+        Lista
+      </button>
+    </div>
+    {#if currentView === 'list'}
+      <div class="search-wrapper">
+        <i class="fas fa-search search-icon"></i>
+        <input 
+          type="text" 
+          class="search-input"
+          placeholder="Buscar agendamentos..." 
+          bind:value={search} 
+        />
       </div>
     {/if}
   </div>
-{/if}
 
-<style>
-  .calendar-view {
-    width: 100%;
-  }
+  <!-- Loading State -->
+  {#if loading}
+    <div class="loading-state">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>Carregando agendamentos...</p>
+    </div>
+  {:else if error}
+    <div class="error-state">
+      <div class="error-icon">
+        <i class="fas fa-exclamation-circle"></i>
+      </div>
+      <h3>Erro ao carregar dados</h3>
+      <p>{error}</p>
+      <button class="btn-retry" on:click={() => window.location.reload()}>
+        <i class="fas fa-redo"></i>
+        Tentar novamente
+      </button>
+    </div>
+  {:else if currentView === "calendar"}
+    <!-- Calendar View -->
+    <div class="calendar-card">
+      <div class="calendar-header">
+        <div class="calendar-nav">
+          <button class="calendar-nav-btn" on:click={previousMonth} title="Mês anterior">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <div class="current-month">{currentMonthLabel}</div>
+          <button class="calendar-nav-btn" on:click={nextMonth} title="Próximo mês">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        <button class="btn-secondary" on:click={goToToday}>
+          <i class="fas fa-calendar-day"></i>
+          Hoje
+        </button>
+      </div>
 
-  /* View Toggle padronizado */
-  .view-toggle {
-    display: flex;
-    background: white;
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-    width: fit-content;
-  }
+      <div class="calendar-grid">
+        {#each days as day}
+          <div class="calendar-day-header">{day}</div>
+        {/each}
 
-  .view-option {
-    padding: 0.8rem 1.5rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 500;
-    color: #6b7280;
-  }
+        {#each calendarDays as d}
+          <div class="calendar-day {d.other ? 'other-month' : ''}">
+            {#if d.label}
+              <div class="day-number">{d.label}</div>
+              {#if d.events.length > 0}
+                <div class="day-events">
+                  {#each d.events as e}
+                    <div
+                      class="schedule-item"
+                      style="background: {e.color}"
+                      on:click={() => {
+                        const msg = `Agendamento: ${e.text}\nNotas: ${e.notes || "Sem observações."}`;
+                        feedback.set({
+                          show: true,
+                          type: 'info',
+                          title: 'Agendamento',
+                          message: msg,
+                        });
+                      }}
+                      title="{e.text}"
+                    >
+                      {e.text}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </div>
+  {:else if filteredSchedules.length > 0}
+    <!-- List View -->
+    <div class="schedules-card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <i class="fas fa-list"></i>
+          Agendamentos ({filteredSchedules.length})
+        </h2>
+      </div>
 
-  .view-option.active {
-    background: #0066cc;
-    color: white;
-    font-weight: 600;
-  }
-
-  .view-option:hover:not(.active) {
-    background: #f3f4f6;
-  }
-
-  /* Navegação do calendário */
-  .calendar-nav-btn {
-    background: #f3f4f6;
-    border: none;
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: #374151;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .calendar-nav-btn:hover {
-    background: #e5e7eb;
-    transform: scale(1.05);
-  }
-
-  .current-month {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
-    min-width: 200px;
-    text-align: center;
-  }
-
-  /* Status badge */
-  .status-scheduled {
-    background: #e6f0ff;
-    color: #1d4ed8;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.85rem;
-  }
-</style>
+      <div class="schedules-list">
+        {#each filteredSchedules as s}
+          <div class="schedule-item-card">
+            <div class="schedule-icon">
+              <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="schedule-content">
+              <div class="schedule-header">
+                <h3 class="schedule-title">{s.machine?.name || 'Agendamento'}</h3>
+                <span class="schedule-date">
+                  <i class="fas fa-clock"></i>
+                  {formatDate(s.date)}
+                </span>
+              </div>
+              <div class="schedule-meta">
+                <div class="meta-item">
+                  <i class="fas fa-user"></i>
+                  <span>{s.user?.name || 'N/A'}</span>
+                </div>
+                {#if s.notes}
+                  <div class="meta-item">
+                    <i class="fas fa-comment"></i>
+                    <span>{s.notes}</span>
+                  </div>
+                {/if}
+              </div>
+            </div>
+            <div class="schedule-actions">
+              <button
+                class="action-btn start"
+                on:click={() => startMaintenance(s)}
+                title="Iniciar manutenção"
+              >
+                <i class="fas fa-play"></i>
+                Iniciar
+              </button>
+              <button
+                class="action-btn delete"
+                on:click={() => deleteSchedule(s.id)}
+                title="Excluir"
+              >
+                <i class="fas fa-trash"></i>
+                Excluir
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {:else}
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i class="fas fa-calendar-times"></i>
+      </div>
+      <h3>Nenhum agendamento encontrado</h3>
+      <p>{search ? 'Tente ajustar a busca.' : 'Comece criando um novo agendamento.'}</p>
+      {#if canCreate() && !search}
+        <button class="btn-primary" on:click={() => goto('/agendamentos/nova')}>
+          <i class="fas fa-plus"></i>
+          Criar Agendamento
+        </button>
+      {/if}
+    </div>
+  {/if}
+</div>
