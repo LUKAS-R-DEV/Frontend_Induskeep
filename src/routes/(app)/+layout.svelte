@@ -2,28 +2,22 @@
   import Navbar from '$lib/components/Navbar.svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Footer from '$lib/components/Footer.svelte';
+  import GlobalFeedback from '$lib/components/GlobalFeedback.svelte';
   import '$lib/styles/global.css';
 
   import { onMount } from 'svelte';
   import { afterNavigate } from '$app/navigation';
 
   onMount(() => {
-    // Opcional: qualquer inicialização global
-    console.log('Layout montado — todas as rotas terão preload automático.');
+    console.log('✅ Layout principal montado');
   });
 
-  // Reset suave de scroll entre páginas
   afterNavigate(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
   });
 </script>
 
-<!-- Layout persistente -->
-<div
-  class="app-shell"
-  data-sveltekit-preload-data="eager"
-  data-sveltekit-preload-code="eager"
->
+<div class="app-shell">
   <Sidebar />
   <div class="content-area">
     <Navbar />
@@ -31,11 +25,13 @@
       <slot />
     </main>
     <Footer />
+
+    <!-- 💬 Feedback Global -->
+    <GlobalFeedback />
   </div>
 </div>
 
 <style>
-  /* GRID fixo e estável */
   .app-shell {
     display: grid;
     grid-template-columns: 220px 1fr;
@@ -60,10 +56,9 @@
     grid-row: 1 / 4;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    min-width: 0;
   }
 
-  :global(nav) {
+  nav {
     grid-row: 1;
     position: sticky;
     top: 0;
@@ -76,10 +71,9 @@
     grid-row: 2;
     padding: 1rem;
     overflow: auto;
-    min-width: 0;
   }
 
-  :global(footer) {
+  footer {
     grid-row: 3;
     border-top: 1px solid #e5e7eb;
     background: #fafafa;

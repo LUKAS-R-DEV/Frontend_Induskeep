@@ -1,6 +1,7 @@
 <script>
   import '$lib/styles/recuperar-senha.css';
   import { goto } from '$app/navigation';
+  import {AuthApi} from '$lib/api/auth';
   import { onMount } from 'svelte';
 
   let email = '';
@@ -20,16 +21,18 @@
     e.preventDefault();
 
     if (!validateEmail()) return;
-
-    // Aqui futuramente você conecta na API real
-    success = true;
-
-    // Simular delay/feedback
-    setTimeout(() => {
-      alert(`Instruções enviadas para: ${email}`);
-      goto('/login');
-    }, 2000);
-  }
+    try{
+      await AuthApi.recoveryPassword({email});
+      success = true;
+       goto('/login');
+    }catch(err){
+      success = true;
+       goto('/login');
+    }
+ 
+  }   
+    
+  
 </script>
 
 <div class="recovery-container">
