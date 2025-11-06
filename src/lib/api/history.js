@@ -11,6 +11,6 @@ export const HistoryApi = {
         });
     },
     async get(id) {
-        return apiFetch(`/order/${id}`);
+        return apiFetch(`/history/order/${id}`);
     },
 };

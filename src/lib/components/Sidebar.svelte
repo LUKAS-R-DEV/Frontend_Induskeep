@@ -144,6 +144,13 @@
       href: '/configuracoes',
       permission: 'ALL',
       roles: ['ADMIN']
+    },
+    {
+      label: 'Logs de Auditoria',
+      icon: 'fas fa-file-alt',
+      href: '/logs',
+      permission: 'ALL',
+      roles: ['ADMIN']
     }
   ];
 
@@ -447,7 +454,7 @@
   .user-avatar {
     width: 40px;
     height: 40px;
-    border-radius: 10px;
+    border-radius: 50%;
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     display: flex;
     align-items: center;

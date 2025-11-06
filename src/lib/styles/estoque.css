@@ -119,6 +119,8 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   border: 1px solid #e2e8f0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .metric-card:hover {
@@ -159,6 +161,8 @@
 
 .metric-content {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .metric-label {
@@ -174,8 +178,67 @@
   font-size: 2.25rem;
   font-weight: 800;
   color: #1e293b;
-  line-height: 1;
+  line-height: 1.1;
   margin: 0 0 0.25rem 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  position: relative;
+  cursor: help;
+}
+
+/* Ajuste para valores muito grandes */
+.metric-card.value .metric-value {
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+/* Tooltip customizado para o card de valor */
+.metric-card.value {
+  position: relative;
+  cursor: help;
+}
+
+.metric-card.value::before {
+  content: attr(data-full-value);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.metric-card.value::after {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.metric-card.value:hover::before,
+.metric-card.value:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
 }
 
 .metric-description {
@@ -215,14 +278,20 @@
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.2s ease;
-  background: #f8fafc;
+  background: #ffffff !important;
+  color: #1e293b !important;
 }
 
 .search-input:focus {
   outline: none;
   border-color: #3b82f6;
-  background: white;
+  background: #ffffff !important;
+  color: #1e293b !important;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.search-input::placeholder {
+  color: #94a3b8 !important;
 }
 
 .filters-row {
@@ -261,15 +330,21 @@
   border-radius: 10px;
   font-size: 0.95rem;
   transition: all 0.2s ease;
-  background: white;
-  color: #1e293b;
+  background: #ffffff !important;
+  color: #1e293b !important;
 }
 
 .filter-select:focus,
 .filter-input:focus {
   outline: none;
   border-color: #3b82f6;
+  background: #ffffff !important;
+  color: #1e293b !important;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.filter-input::placeholder {
+  color: #94a3b8 !important;
 }
 
 .btn-clear-filters {

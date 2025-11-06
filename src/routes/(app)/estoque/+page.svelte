@@ -151,13 +151,13 @@
         </div>
       </div>
 
-      <div class="metric-card value">
+      <div class="metric-card value" data-full-value="Valor Total: {moedaBR(totalValor)}" title="Valor Total: {moedaBR(totalValor)}">
         <div class="metric-icon money">
           <i class="fas fa-dollar-sign"></i>
         </div>
         <div class="metric-content">
           <h3 class="metric-label">Valor Total</h3>
-          <div class="metric-value">{moedaBR(totalValor)}</div>
+          <div class="metric-value" title="{moedaBR(totalValor)}">{moedaBR(totalValor)}</div>
           <p class="metric-description">Valor em estoque</p>
         </div>
       </div>

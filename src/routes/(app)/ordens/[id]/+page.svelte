@@ -53,15 +53,82 @@
       // Carrega dados da ordem
       ordem = await OrdersApi.get(id);
       
-      // Carrega histórico se disponível
+      // Carrega histórico se disponível e constrói timeline
       try {
         const historyData = await HistoryApi.get(id);
-        history = Array.isArray(historyData) ? historyData : (historyData?.history || []);
-        // Ordena histórico por data (mais recente primeiro)
-        history.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        
+        // Verifica se é array ou objeto com propriedade history
+        let historyRecords = [];
+        if (Array.isArray(historyData)) {
+          historyRecords = historyData;
+        } else if (historyData && Array.isArray(historyData.history)) {
+          historyRecords = historyData.history;
+        } else if (historyData && historyData.data && Array.isArray(historyData.data)) {
+          historyRecords = historyData.data;
+        }
+        
+        // Constrói timeline com eventos da ordem
+        history = [];
+        
+        // 1. Adiciona criação da ordem
+        if (ordem.createdAt) {
+          history.push({
+            type: 'created',
+            date: ordem.createdAt,
+            notes: `Ordem de serviço criada`,
+            status: ordem.status
+          });
+        }
+        
+        // 2. Adiciona histórico de conclusão (se existir)
+        if (historyRecords && historyRecords.length > 0) {
+          historyRecords.forEach(h => {
+            history.push({
+              type: 'completed',
+              date: h.completedAt || h.createdAt,
+              notes: h.notes || 'Ordem de serviço concluída',
+              status: 'COMPLETED'
+            });
+          });
+        }
+        
+        // 3. Adiciona atualização (se diferente da criação)
+        if (ordem.updatedAt && ordem.updatedAt !== ordem.createdAt) {
+          // Verifica se não é a mesma data da conclusão
+          const isUpdate = !historyRecords.some(h => {
+            const completedDate = new Date(h.completedAt || h.createdAt).getTime();
+            const updatedDate = new Date(ordem.updatedAt).getTime();
+            return Math.abs(completedDate - updatedDate) < 1000; // menos de 1 segundo de diferença
+          });
+          
+          if (isUpdate) {
+            history.push({
+              type: 'updated',
+              date: ordem.updatedAt,
+              notes: `Ordem atualizada`,
+              status: ordem.status
+            });
+          }
+        }
+        
+        // Ordena timeline por data (mais recente primeiro)
+        history.sort((a, b) => {
+          const dateA = new Date(a.date || 0);
+          const dateB = new Date(b.date || 0);
+          return dateB - dateA;
+        });
       } catch (e) {
         console.warn('Erro ao carregar histórico:', e);
+        // Mesmo com erro, mostra pelo menos a criação
         history = [];
+        if (ordem.createdAt) {
+          history.push({
+            type: 'created',
+            date: ordem.createdAt,
+            notes: `Ordem de serviço criada`,
+            status: ordem.status
+          });
+        }
       }
     } catch (e) {
       console.error('Erro ao carregar ordem:', e);
@@ -334,20 +401,36 @@
               <div class="timeline">
                 {#each history as h, index}
                   <div class="timeline-item">
-                    <div class="timeline-marker" style="background: {getStatusColor(ordem.status)};">
+                    <div class="timeline-marker" style="background: {getStatusColor(h.status || ordem.status)};">
                       <i class="fas fa-circle"></i>
                     </div>
                     <div class="timeline-content">
                       <div class="timeline-header">
                         <div class="timeline-date">
                           <i class="fas fa-clock"></i>
-                          {formatDate(h.createdAt)}
+                          {formatDate(h.date || h.completedAt || h.createdAt)}
                         </div>
                         {#if index === 0}
                           <span class="timeline-badge">Mais recente</span>
                         {/if}
                       </div>
                       <div class="timeline-text">{h.notes || 'Sem observações'}</div>
+                      {#if h.type === 'completed'}
+                        <div class="timeline-type-badge completed">
+                          <i class="fas fa-check-circle"></i>
+                          Concluída
+                        </div>
+                      {:else if h.type === 'created'}
+                        <div class="timeline-type-badge created">
+                          <i class="fas fa-plus-circle"></i>
+                          Criada
+                        </div>
+                      {:else if h.type === 'updated'}
+                        <div class="timeline-type-badge updated">
+                          <i class="fas fa-edit"></i>
+                          Atualizada
+                        </div>
+                      {/if}
                     </div>
                   </div>
                 {/each}
@@ -712,6 +795,37 @@
     font-size: 0.95rem;
     color: #1e293b;
     line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+
+  .timeline-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+  }
+
+  .timeline-type-badge.completed {
+    background: #d1fae5;
+    color: #059669;
+  }
+
+  .timeline-type-badge.created {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+
+  .timeline-type-badge.updated {
+    background: #fef3c7;
+    color: #d97706;
+  }
+
+  .timeline-type-badge i {
+    font-size: 0.7rem;
   }
 
   .empty-timeline {

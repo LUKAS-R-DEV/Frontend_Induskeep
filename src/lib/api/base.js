@@ -59,20 +59,59 @@ export async function apiFetch(path, options = {}) {
         console.error("❌ [API Error]", message, { url, status: res.status, data });
       }
 
+      // 🔐 Tratamento especial para erro 401 (Token expirado/inválido)
+      if (res.status === 401) {
+        // Limpa dados de autenticação do localStorage
+        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('permissions');
+        }
+
+        // ⏹️ Finaliza o loading
+        if (!options.silent && !options.skipFeedback) {
+          setTimeout(() => feedback.set({ show: false }), 100);
+        }
+
+        // Mostra feedback informando sobre a expiração da sessão
+        if (!options.silent && !options.skipFeedback) {
+          setTimeout(() => {
+            feedback.set({
+              show: true,
+              type: "error",
+              title: "Sessão expirada",
+              message: "Sua sessão expirou. Redirecionando para o login...",
+            });
+          }, 200);
+        }
+
+        // Redireciona para login após um breve delay
+        if (typeof window !== 'undefined') {
+          setTimeout(() => {
+            // Usa replace para não adicionar ao histórico
+            window.location.replace('/login');
+          }, 1500);
+        }
+
+        const error = new Error(message);
+        error.status = res.status;
+        error.data = data;
+        throw error;
+      }
+
       // ⏹️ Finaliza o loading primeiro (apenas se foi mostrado)
       if (!options.silent && !options.skipFeedback) {
         setTimeout(() => feedback.set({ show: false }), 100);
       }
 
       // 🔴 Mostra modal de erro global apenas se não for silencioso
-      // Para erros de autenticação (401), não mostra modal global - deixa a página tratar
       if (!options.silent && !options.skipFeedback) {
         // Aguarda um pouco para o loading fechar antes de mostrar o erro
         setTimeout(() => {
           feedback.set({
             show: true,
             type: "error",
-            title: res.status === 401 ? "Credenciais inválidas" : "Erro",
+            title: "Erro",
             message,
           });
         }, 200);

@@ -31,7 +31,8 @@
     { path: '/historico', label: 'Histórico', icon: 'fas fa-history' },
     { path: '/notificacoes', label: 'Notificações', icon: 'fas fa-bell' },
     { path: '/agendamentos', label: 'Agendamentos', icon: 'fas fa-calendar-alt' },
-    { path: '/configuracoes', label: 'Configurações', icon: 'fas fa-gear' }
+    { path: '/configuracoes', label: 'Configurações', icon: 'fas fa-gear' },
+    { path: '/logs', label: 'Logs de Auditoria', icon: 'fas fa-file-alt' }
   ];
 
   // Computed reativo - depende diretamente de $page.url.pathname
