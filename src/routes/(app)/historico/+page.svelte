@@ -4,6 +4,8 @@
   import { HistoryApi } from '$lib/api/history';
   import { ExportFactory } from '$lib/export';
   import { feedback } from '$lib/stores/feedback.stores.js';
+  import { hasPermission } from '$lib/utils/permissions.js';
+  import { goto } from '$app/navigation';
 
   let loading = true;
   let busca = '';
@@ -12,6 +14,7 @@
   let dataAte = '';
   let historico = [];
   let filtrado = [];
+  let user = null;
 
   function duration(createdAt, completedAt) {
     if (!createdAt || !completedAt) return '-';
@@ -26,11 +29,44 @@
 
   onMount(async () => {
     try {
+      // Carrega usuário do localStorage
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          user = JSON.parse(stored);
+        }
+      }
+
+      // Verifica se tem permissão para ver histórico
+      if (!user || !hasPermission(user.role, 'VIEW_HISTORY')) {
+        feedback.set({
+          show: true,
+          type: 'error',
+          title: 'Acesso negado',
+          message: 'Você não tem permissão para acessar esta página.',
+        });
+        setTimeout(() => {
+          goto('/dashboard');
+        }, 2000);
+        return;
+      }
+
       const data = await HistoryApi.list();
       historico = Array.isArray(data) ? data : [];
       filtrado = [...historico];
     } catch (err) {
       console.error('Erro ao carregar histórico:', err);
+      if (err.status === 403) {
+        feedback.set({
+          show: true,
+          type: 'error',
+          title: 'Acesso negado',
+          message: 'Você não tem permissão para acessar esta página.',
+        });
+        setTimeout(() => {
+          goto('/dashboard');
+        }, 2000);
+      }
     } finally {
       loading = false;
     }

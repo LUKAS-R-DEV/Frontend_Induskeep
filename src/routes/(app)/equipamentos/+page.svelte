@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { MachinesApi } from '$lib/api/machines';
   import { feedback } from '$lib/stores/feedback.stores.js';
-  import { isAdmin } from '$lib/utils/permissions.js';
+  import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
 
   let search = '';
   let statusFilter = '';
@@ -105,7 +105,7 @@
         <h1 class="page-title">Equipamentos</h1>
         <p class="page-subtitle">Gerencie máquinas e equipamentos industriais</p>
       </div>
-      {#if isAdmin(user?.role)}
+      {#if isSupervisorOrAdmin(user?.role)}
         <button class="btn-primary" on:click={() => goto('/equipamentos/cadastro')}>
           <i class="fas fa-plus"></i>
           Novo Equipamento
@@ -208,7 +208,7 @@
               </span>
             </div>
 
-            {#if isAdmin(user?.role)}
+            {#if isSupervisorOrAdmin(user?.role)}
               <div class="equipment-actions">
                 <button
                   class="action-btn edit"
@@ -239,7 +239,7 @@
       </div>
       <h3>Nenhum equipamento encontrado</h3>
       <p>{search || statusFilter ? 'Tente ajustar os filtros de busca.' : 'Comece cadastrando um novo equipamento.'}</p>
-      {#if isAdmin(user?.role) && !search && !statusFilter}
+      {#if isSupervisorOrAdmin(user?.role) && !search && !statusFilter}
         <button class="btn-primary" on:click={() => goto('/equipamentos/cadastro')}>
           <i class="fas fa-plus"></i>
           Cadastrar Equipamento

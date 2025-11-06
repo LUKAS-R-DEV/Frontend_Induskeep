@@ -65,7 +65,7 @@
       return false;
     }
     const userRole = String(user.role).toUpperCase().trim();
-    const result = userRole === 'ADMIN' || userRole === 'SUPERVISOR';
+    const result = userRole === 'ADMIN' || userRole === 'SUPERVISOR' || userRole === 'TECHNICIAN';
     console.log('🔍 Movimentações - canCreate:', { userRole: user.role, normalized: userRole, result });
     return result;
   })();
@@ -81,26 +81,29 @@
     <div class="header-content">
       <div>
         <h1 class="page-title">Movimentações de Estoque</h1>
-        <p class="page-subtitle">Histórico de entradas e saídas de peças</p>
+        <p class="page-subtitle">
+          {#if user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN'}
+            Minhas movimentações de estoque
+          {:else}
+            Histórico de entradas e saídas de peças
+          {/if}
+        </p>
       </div>
       <div class="header-actions">
         <button class="btn-secondary" on:click={() => goto('/estoque')}>
           <i class="fas fa-arrow-left"></i>
           Voltar
         </button>
-        <button 
-          class="btn-primary" 
-          on:click={() => {
-            if (canCreateMovement) {
-              goto('/estoque/movimentacoes/nova');
-            }
-          }}
-          disabled={!canCreateMovement}
-          title={canCreateMovement ? 'Registrar nova movimentação' : 'Você não tem permissão para criar movimentações'}
-        >
-          <i class="fas fa-plus"></i>
-          Nova Movimentação
-        </button>
+        {#if canCreateMovement}
+          <button 
+            class="btn-primary" 
+            on:click={() => goto('/estoque/movimentacoes/nova')}
+            title="Registrar nova movimentação"
+          >
+            <i class="fas fa-plus"></i>
+            Nova Movimentação
+          </button>
+        {/if}
       </div>
     </div>
   </div>

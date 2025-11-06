@@ -21,6 +21,11 @@
       const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       if (stored) {
         user = JSON.parse(stored);
+        // Se for técnico, define tipo padrão como EXIT
+        const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
+        if (userRole === 'TECHNICIAN') {
+          type = 'EXIT';
+        }
       }
 
       pecas = await PieceApi.list();
@@ -52,6 +57,19 @@
         show: true,
         type: 'error',
         title: 'Valor inválido',
+        message: error,
+      });
+      return;
+    }
+
+    // Validação: técnico só pode fazer saída
+    const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
+    if (userRole === 'TECHNICIAN' && type !== 'EXIT') {
+      error = 'Técnicos podem realizar apenas saídas de estoque.';
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Tipo inválido',
         message: error,
       });
       return;
@@ -199,12 +217,23 @@
               bind:value={type} 
               required
               class="form-select"
-              disabled={loading}
+              disabled={loading || (user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN')}
             >
-              <option value="ENTRY">Entrada</option>
+              {#if !user || String(user.role || '').toUpperCase().trim() !== 'TECHNICIAN'}
+                <option value="ENTRY">Entrada</option>
+              {/if}
               <option value="EXIT">Saída</option>
             </select>
-            <small class="form-hint">Entrada aumenta o estoque, saída diminui</small>
+            <small class="form-hint">
+              {#if user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN'}
+                <span style="color: #f59e0b;">
+                  <i class="fas fa-info-circle"></i>
+                  Técnicos podem realizar apenas saídas de estoque.
+                </span>
+              {:else}
+                Entrada aumenta o estoque, saída diminui
+              {/if}
+            </small>
           </div>
 
           <div class="form-group">

@@ -122,7 +122,7 @@
       icon: 'fas fa-history',
       href: '/historico',
       permission: 'VIEW_HISTORY',
-      roles: ['TECHNICIAN', 'SUPERVISOR', 'ADMIN']
+      roles: ['SUPERVISOR', 'ADMIN'] // Apenas supervisor e admin
     },
     {
       label: 'Notificações',
@@ -142,8 +142,8 @@
       label: 'Configurações',
       icon: 'fas fa-gear',
       href: '/configuracoes',
-      permission: 'ALL',
-      roles: ['ADMIN']
+      permission: 'MANAGE_SETTINGS',
+      roles: ['SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Logs de Auditoria',

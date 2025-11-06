@@ -6,7 +6,7 @@
   import { StockApi } from '$lib/api/stock';
   import { SettingsApi } from '$lib/api/settings';
 
-  import { isAdmin } from '$lib/utils/permissions.js';
+  import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
 
   let loading = true;
   let error = '';
@@ -103,7 +103,7 @@
         <p class="page-subtitle">Gerencie peças e movimentações do estoque</p>
       </div>
       <div class="header-actions">
-        {#if isAdmin(user?.role)}
+        {#if isSupervisorOrAdmin(user?.role)}
           <button class="btn-primary" on:click={() => goto('/estoque/cadastro')}>
             <i class="fas fa-plus"></i>
             Nova Peça
@@ -151,38 +151,40 @@
         </div>
       </div>
 
-      <div class="metric-card value" data-full-value="Valor Total: {moedaBR(totalValor)}" title="Valor Total: {moedaBR(totalValor)}">
-        <div class="metric-icon money">
-          <i class="fas fa-dollar-sign"></i>
+      {#if isSupervisorOrAdmin(user?.role)}
+        <div class="metric-card value" data-full-value="Valor Total: {moedaBR(totalValor)}" title="Valor Total: {moedaBR(totalValor)}">
+          <div class="metric-icon money">
+            <i class="fas fa-dollar-sign"></i>
+          </div>
+          <div class="metric-content">
+            <h3 class="metric-label">Valor Total</h3>
+            <div class="metric-value" title="{moedaBR(totalValor)}">{moedaBR(totalValor)}</div>
+            <p class="metric-description">Valor em estoque</p>
+          </div>
         </div>
-        <div class="metric-content">
-          <h3 class="metric-label">Valor Total</h3>
-          <div class="metric-value" title="{moedaBR(totalValor)}">{moedaBR(totalValor)}</div>
-          <p class="metric-description">Valor em estoque</p>
-        </div>
-      </div>
 
-      <div class="metric-card warning">
-        <div class="metric-icon alert">
-          <i class="fas fa-exclamation-triangle"></i>
+        <div class="metric-card warning">
+          <div class="metric-icon alert">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="metric-content">
+            <h3 class="metric-label">Baixo Estoque</h3>
+            <div class="metric-value">{itensBaixo}</div>
+            <p class="metric-description">Itens abaixo do mínimo</p>
+          </div>
         </div>
-        <div class="metric-content">
-          <h3 class="metric-label">Baixo Estoque</h3>
-          <div class="metric-value">{itensBaixo}</div>
-          <p class="metric-description">Itens abaixo do mínimo</p>
-        </div>
-      </div>
 
-      <div class="metric-card critical">
-        <div class="metric-icon danger">
-          <i class="fas fa-exclamation-circle"></i>
+        <div class="metric-card critical">
+          <div class="metric-icon danger">
+            <i class="fas fa-exclamation-circle"></i>
+          </div>
+          <div class="metric-content">
+            <h3 class="metric-label">Críticos</h3>
+            <div class="metric-value">{itensCritico}</div>
+            <p class="metric-description">Itens sem estoque</p>
+          </div>
         </div>
-        <div class="metric-content">
-          <h3 class="metric-label">Críticos</h3>
-          <div class="metric-value">{itensCritico}</div>
-          <p class="metric-description">Itens sem estoque</p>
-        </div>
-      </div>
+      {/if}
     </div>
 
     <!-- Filters -->

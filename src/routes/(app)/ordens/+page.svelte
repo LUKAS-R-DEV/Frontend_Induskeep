@@ -117,9 +117,14 @@
         throw new Error('Ordem de serviço não encontrada');
       }
 
+      // Mensagem personalizada se já estiver concluída
+      const notes = order.status === 'COMPLETED' 
+        ? 'Ordem reaberta e concluída novamente'
+        : 'Ordem de serviço concluída pelo sistema';
+
       await HistoryApi.create({
         orderId: id,
-        notes: 'Ordem de serviço concluída pelo sistema'
+        notes
       });
 
       const notificationPayload = {
@@ -189,8 +194,140 @@
     return canCreateOrder;
   }
 
-  function canUpdate() {
-    return user && hasPermission(user.role, 'UPDATE_ORDER');
+  function canUpdate(order = null) {
+    if (!user || !hasPermission(user.role, 'UPDATE_ORDER')) {
+      return false;
+    }
+    // Técnicos não podem editar (removido botão editar para técnicos)
+    const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
+    if (userRole === 'TECHNICIAN') {
+      return false;
+    }
+    return true;
+  }
+
+  function canDelete() {
+    return user && (hasPermission(user.role, 'DELETE_ORDER') || hasPermission(user.role, 'ALL'));
+  }
+
+  function canComplete(order = null) {
+    if (!order || !user) return false;
+    // Apenas técnicos podem concluir ordens
+    const userRole = String(user.role || '').toUpperCase().trim();
+    if (userRole !== 'TECHNICIAN') {
+      return false;
+    }
+    // Técnico só pode concluir ordens atribuídas a ele
+    if (order.userId !== user.id) {
+      return false;
+    }
+    return order.status !== 'CANCELLED';
+  }
+
+  function canStart(order = null) {
+    if (!order || !user) return false;
+    const userRole = String(user.role || '').toUpperCase().trim();
+    // Apenas técnicos podem iniciar ordens
+    if (userRole !== 'TECHNICIAN') {
+      return false;
+    }
+    // Técnico pode iniciar apenas ordens atribuídas a ele que estejam pendentes
+    return order.userId === user.id && order.status === 'PENDING';
+  }
+
+  function canPause(order = null) {
+    if (!order || !user) return false;
+    const userRole = String(user.role || '').toUpperCase().trim();
+    // Técnico pode pausar apenas ordens atribuídas a ele que estejam em andamento
+    if (userRole === 'TECHNICIAN') {
+      return order.userId === user.id && order.status === 'IN_PROGRESS';
+    }
+    // Supervisor e admin podem pausar qualquer ordem em andamento
+    return order.status === 'IN_PROGRESS';
+  }
+
+  async function startOrder(id) {
+    try {
+      const order = ordens.find(o => o.id === id);
+      if (!order) {
+        throw new Error('Ordem de serviço não encontrada');
+      }
+
+      const confirmed = await new Promise((resolve) => {
+        feedback.set({
+          show: true,
+          type: 'confirm',
+          title: 'Iniciar ordem',
+          message: 'Deseja iniciar esta ordem de serviço? A máquina será colocada em manutenção.',
+          confirmCallback: () => resolve(true)
+        });
+      });
+
+      if (!confirmed) return;
+
+      await OrdersApi.update(id, { status: 'IN_PROGRESS' });
+      
+      // Atualiza a ordem na lista
+      ordens = ordens.map(o =>
+        o.id === id ? { ...o, status: 'IN_PROGRESS' } : o
+      );
+
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Ordem de serviço iniciada com sucesso.',
+      });
+    } catch (e) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: e?.message || 'Falha ao iniciar a ordem de serviço.',
+      });
+    }
+  }
+
+  async function pauseOrder(id) {
+    try {
+      const order = ordens.find(o => o.id === id);
+      if (!order) {
+        throw new Error('Ordem de serviço não encontrada');
+      }
+
+      const confirmed = await new Promise((resolve) => {
+        feedback.set({
+          show: true,
+          type: 'confirm',
+          title: 'Pausar ordem',
+          message: 'Deseja pausar esta ordem de serviço? A máquina voltará ao status anterior.',
+          confirmCallback: () => resolve(true)
+        });
+      });
+
+      if (!confirmed) return;
+
+      await OrdersApi.update(id, { status: 'PENDING' });
+      
+      // Atualiza a ordem na lista
+      ordens = ordens.map(o =>
+        o.id === id ? { ...o, status: 'PENDING' } : o
+      );
+
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Ordem de serviço pausada com sucesso.',
+      });
+    } catch (e) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: e?.message || 'Falha ao pausar a ordem de serviço.',
+      });
+    }
   }
 </script>
 
@@ -202,19 +339,16 @@
         <h1 class="page-title">Ordens de Serviço</h1>
         <p class="page-subtitle">Gerencie todas as ordens de manutenção</p>
       </div>
-      <button 
-        class="btn-primary" 
-        on:click={() => {
-          if (canCreateOrder) {
-            goto('/ordens/cadastro');
-          }
-        }}
-        disabled={!canCreateOrder}
-        title={canCreateOrder ? 'Criar nova ordem de serviço' : 'Você não tem permissão para criar ordens'}
-      >
-        <i class="fas fa-plus"></i>
-        Nova Ordem
-      </button>
+      {#if canCreateOrder}
+        <button 
+          class="btn-primary" 
+          on:click={() => goto('/ordens/cadastro')}
+          title="Criar nova ordem de serviço"
+        >
+          <i class="fas fa-plus"></i>
+          Nova Ordem
+        </button>
+      {/if}
     </div>
   </div>
 
@@ -340,7 +474,27 @@
                 <i class="fas fa-eye"></i>
                 Ver
               </button>
-              {#if canUpdate()}
+              {#if canStart(order)}
+                <button
+                  class="action-btn start"
+                  on:click={() => startOrder(order.id)}
+                  title="Iniciar ordem"
+                >
+                  <i class="fas fa-play"></i>
+                  Iniciar
+                </button>
+              {/if}
+              {#if canPause(order)}
+                <button
+                  class="action-btn pause"
+                  on:click={() => pauseOrder(order.id)}
+                  title="Pausar ordem"
+                >
+                  <i class="fas fa-pause"></i>
+                  Pausar
+                </button>
+              {/if}
+              {#if canUpdate(order)}
                 <button
                   class="action-btn edit"
                   on:click={() => goto(`/ordens/${order.id}/editar`)}
@@ -350,23 +504,26 @@
                   Editar
                 </button>
               {/if}
-              <button
-                class="action-btn complete"
-                on:click={() => completeOrder(order.id)}
-                disabled={order.status === 'COMPLETED'}
-                title="Concluir"
-              >
-                <i class="fas fa-check"></i>
-                Concluir
-              </button>
-              <button
-                class="action-btn delete"
-                on:click={() => deleteOrder(order.id)}
-                title="Excluir"
-              >
-                <i class="fas fa-trash"></i>
-                Excluir
-              </button>
+              {#if canComplete(order)}
+                <button
+                  class="action-btn complete"
+                  on:click={() => completeOrder(order.id)}
+                  title={order.status === 'COMPLETED' ? 'Concluir novamente' : 'Concluir'}
+                >
+                  <i class="fas fa-check"></i>
+                  {order.status === 'COMPLETED' ? 'Concluir Novamente' : 'Concluir'}
+                </button>
+              {/if}
+              {#if canDelete()}
+                <button
+                  class="action-btn delete"
+                  on:click={() => deleteOrder(order.id)}
+                  title="Excluir"
+                >
+                  <i class="fas fa-trash"></i>
+                  Excluir
+                </button>
+              {/if}
             </div>
           </div>
         {/each}

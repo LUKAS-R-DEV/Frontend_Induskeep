@@ -29,7 +29,17 @@
           <button class="confirm" on:click={confirm}>Confirmar</button>
         </div>
       {:else}
-        <div class="icon {state.type}"></div>
+        <div class="icon {state.type}">
+          {#if state.type === 'success'}
+            <i class="fas fa-check-circle"></i>
+          {:else if state.type === 'error'}
+            <i class="fas fa-exclamation-circle"></i>
+          {:else if state.type === 'warning'}
+            <i class="fas fa-exclamation-triangle"></i>
+          {:else if state.type === 'info'}
+            <i class="fas fa-info-circle"></i>
+          {/if}
+        </div>
         <h3>{state.title}</h3>
         <p>{state.message}</p>
         <button class="ok" on:click={close}>OK</button>
@@ -57,6 +67,14 @@
   max-width: 360px;
   text-align: center;
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .icon.success { color: #2ecc71; }

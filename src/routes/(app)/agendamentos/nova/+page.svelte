@@ -25,13 +25,13 @@
     try {
       const [dataMachines, dataUsers] = await Promise.all([
         MachinesApi.list(),
-        UserApi.list()
+        // Usa listTechnicians() que permite supervisor e admin verem técnicos
+        UserApi.listTechnicians()
       ]);
 
       machines = Array.isArray(dataMachines) ? dataMachines : [];
-      users = (Array.isArray(dataUsers) ? dataUsers : []).filter(
-        (u) => u.role === "TECHNICIAN"
-      );
+      // listTechnicians() já retorna apenas técnicos, não precisa filtrar
+      users = Array.isArray(dataUsers) ? dataUsers : [];
     } catch (err) {
       error = 'Erro ao carregar dados. Tente novamente.';
       console.error(err);

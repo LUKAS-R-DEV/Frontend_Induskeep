@@ -7,6 +7,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { feedback } from '$lib/stores/feedback.stores.js';
+  import { isAdmin } from '$lib/utils/permissions.js';
 
   let id = '';
 
@@ -22,30 +23,61 @@
   let error = '';
   let machines = [];
   let users = [];
+  let originalStatus = 'PENDING'; // Status original da ordem
+  let user = null;
 
   onMount(async () => {
     try {
+      // Carrega usuário do localStorage
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          user = JSON.parse(stored);
+        }
+      }
+
       id = $page.params.id;
       
       // Carrega dados em paralelo
+      // Se for admin, busca todos os usuários; senão, busca apenas técnicos
       const [os, dataMachines, dataUsers] = await Promise.all([
         OrdersApi.get(id),
         MachinesApi.list(),
-        UserApi.list()
+        isAdmin(user?.role) ? UserApi.list() : UserApi.listTechnicians()
       ]);
+
+      // Validação: se for técnico, verifica se a ordem pertence a ele
+      const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
+      if (userRole === 'TECHNICIAN' && os.userId !== user.id) {
+        error = 'Você não tem permissão para editar esta ordem de serviço.';
+        feedback.set({
+          show: true,
+          type: 'error',
+          title: 'Acesso negado',
+          message: error,
+        });
+        setTimeout(() => {
+          goto('/ordens');
+        }, 2000);
+        return;
+      }
 
       // Preenche formulário
       title = os.title || '';
       description = os.description || '';
       machineId = os.machineId || os.machine?.id || '';
       userId = os.userId || os.user?.id || '';
-      status = os.status || 'PENDING';
+      originalStatus = os.status || 'PENDING'; // Guarda o status original para referência
+      // Se estiver concluída, permite reabrir mudando para outro status
+      // Se não estiver concluída, usa o status atual
+      status = os.status === 'COMPLETED' ? 'IN_PROGRESS' : (os.status || 'PENDING');
 
       // Preenche listas
       machines = Array.isArray(dataMachines) ? dataMachines : [];
-      users = (Array.isArray(dataUsers) ? dataUsers : []).filter(
-        (u) => u.role === "TECHNICIAN"
-      );
+      // Se usou list(), filtra técnicos; se usou listTechnicians(), já vem filtrado
+      users = isAdmin(user?.role)
+        ? (Array.isArray(dataUsers) ? dataUsers : []).filter((u) => u.role === "TECHNICIAN")
+        : (Array.isArray(dataUsers) ? dataUsers : []);
     } catch (e) {
       error = e?.message || 'Falha ao carregar a ordem de serviço.';
       feedback.set({
@@ -77,7 +109,59 @@
     }
 
     try {
-      const payload = { title, description, machineId, userId, status };
+      // Validação: apenas técnicos podem mudar status para IN_PROGRESS ou COMPLETED
+      const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
+      if ((status === 'IN_PROGRESS' || status === 'COMPLETED') && userRole !== 'TECHNICIAN') {
+        feedback.set({
+          show: true,
+          type: 'error',
+          title: 'Acesso negado',
+          message: 'Apenas o técnico responsável pode iniciar ou concluir uma ordem de serviço.',
+        });
+        loading = false;
+        return;
+      }
+      
+      // Se técnico tentar mudar para IN_PROGRESS, verifica se a ordem é dele
+      if (status === 'IN_PROGRESS' && userRole === 'TECHNICIAN') {
+        const os = await OrdersApi.get(id);
+        if (os.userId !== user.id) {
+          feedback.set({
+            show: true,
+            type: 'error',
+            title: 'Acesso negado',
+            message: 'Você não tem permissão para iniciar esta ordem de serviço.',
+          });
+          loading = false;
+          return;
+        }
+      }
+
+      // Não permite salvar como COMPLETED diretamente na edição
+      // A conclusão deve ser feita pelo botão específico que cria o histórico
+      const finalStatus = status === 'COMPLETED' ? 'IN_PROGRESS' : status;
+      const payload = { title, description, machineId, userId, status: finalStatus };
+      
+      // Se estava tentando salvar como COMPLETED, avisa o usuário
+      if (status === 'COMPLETED') {
+        feedback.set({
+          show: true,
+          type: 'warning',
+          title: 'Atenção',
+          message: 'Para concluir a ordem, use o botão "Concluir" na lista ou na página de detalhes. O status foi alterado para "Em Andamento".',
+        });
+      }
+      
+      // Se estava concluída e mudou para outro status, informa que foi reaberta
+      if (originalStatus === 'COMPLETED' && finalStatus !== 'COMPLETED') {
+        feedback.set({
+          show: true,
+          type: 'info',
+          title: 'Ordem reaberta',
+          message: `A ordem foi reaberta e o status foi alterado para "${getStatusLabel(finalStatus)}". Para concluí-la novamente, use o botão "Concluir".`,
+        });
+      }
+      
       await OrdersApi.update(id, payload);
       
       feedback.set({
@@ -213,17 +297,29 @@
               disabled={loading}
             >
               <option value="">Selecione um equipamento</option>
-              {#each machines as m}
+              {#each machines.filter(m => m.status === 'ACTIVE' || m.status === 'MAINTENANCE' || m.id === machineId) as m}
                 <option value={m.id}>
                   {m.name} — {m.location || 'Sem localização'}
+                  {#if m.status === 'MAINTENANCE'}
+                    (Em Manutenção)
+                  {:else if m.status === 'INACTIVE'}
+                    (Inativo)
+                  {/if}
                 </option>
               {/each}
             </select>
             <small class="form-hint">
               {#if selectedMachine}
                 Equipamento selecionado: <strong>{selectedMachine.name}</strong>
+                {#if selectedMachine.status === 'INACTIVE'}
+                  <br>
+                  <span style="color: #f59e0b;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Este equipamento está inativo. Apenas equipamentos ativos ou em manutenção podem ser selecionados para novas ordens.
+                  </span>
+                {/if}
               {:else}
-                Selecione o equipamento a ser mantido
+                Selecione o equipamento a ser mantido. Apenas equipamentos ativos ou em manutenção podem ser selecionados.
               {/if}
             </small>
           </div>
@@ -268,12 +364,28 @@
             disabled={loading}
           >
             <option value="PENDING">Pendente</option>
-            <option value="IN_PROGRESS">Em Andamento</option>
-            <option value="COMPLETED">Concluída</option>
-            <option value="CANCELLED">Cancelada</option>
+            {#if user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN'}
+              <option value="IN_PROGRESS">Em Andamento</option>
+            {/if}
+            {#if !user || String(user.role || '').toUpperCase().trim() !== 'TECHNICIAN'}
+              <option value="CANCELLED">Cancelada</option>
+            {/if}
           </select>
           <small class="form-hint">
-            Status atual: <strong>{getStatusLabel(status)}</strong>
+            Status atual: <strong>{getStatusLabel(originalStatus)}</strong>
+            {#if originalStatus === 'COMPLETED'}
+              <br>
+              <span style="color: #059669; font-weight: 600;">
+                <i class="fas fa-info-circle"></i>
+                Esta ordem está concluída. Para reabrir, altere o status acima. Para concluir novamente, use o botão "Concluir" na lista ou na página de detalhes.
+              </span>
+            {:else}
+              <br>
+              <span style="color: #64748b;">
+                <i class="fas fa-info-circle"></i>
+                Para concluir a ordem, use o botão "Concluir" na lista ou na página de detalhes.
+              </span>
+            {/if}
           </small>
         </div>
 

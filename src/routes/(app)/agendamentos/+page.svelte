@@ -6,13 +6,16 @@
   import { goto } from "$app/navigation";
   import { feedback } from '$lib/stores/feedback.stores.js';
   import { hasPermission } from '$lib/utils/permissions.js';
+  import { getUser } from '$lib/stores/users.js';
 
   let currentDate = new Date();
   let currentView = "calendar";
   let schedules = [];
   let loading = true;
   let error = "";
-  let user = null;
+  // Carrega usuário de forma síncrona para evitar problemas de reatividade
+  // Verifica se está no browser antes de acessar localStorage
+  let user = typeof window !== 'undefined' ? getUser() : null;
   let search = '';
 
   const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -26,12 +29,9 @@
 
   onMount(async () => {
     try {
-      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        const stored = localStorage.getItem('user');
-        if (stored) {
-          user = JSON.parse(stored);
-          console.log('🔍 Agendamentos - User carregado:', { user, role: user?.role, roleType: typeof user?.role });
-        }
+      // Atualiza user caso tenha mudado (mas já foi carregado síncronamente acima)
+      if (!user) {
+        user = getUser();
       }
       await loadSchedules();
     } catch (e) {
@@ -183,16 +183,17 @@
   // Tornar reativo para atualizar quando user mudar
   $: canCreateSchedule = (() => {
     if (!user || !user.role) {
-      console.log('❌ Agendamentos - canCreate: sem user ou role', { user, hasUser: !!user, hasRole: !!user?.role });
       return false;
     }
-    const result = hasPermission(user.role, 'CREATE_SCHEDULE');
-    console.log('🔍 Agendamentos - canCreate:', { userRole: user.role, normalized: String(user.role).toUpperCase().trim(), result });
-    return result;
+    return hasPermission(user.role, 'CREATE_SCHEDULE');
   })();
 
   function canCreate() {
     return canCreateSchedule;
+  }
+
+  function canDelete() {
+    return user && hasPermission(user.role, 'ALL');
   }
 </script>
 
@@ -204,19 +205,16 @@
         <h1 class="page-title">Agendamentos</h1>
         <p class="page-subtitle">Gerencie agendamentos de manutenção preventiva</p>
       </div>
-      <button 
-        class="btn-primary" 
-        on:click={() => {
-          if (canCreateSchedule) {
-            goto('/agendamentos/nova');
-          }
-        }}
-        disabled={!canCreateSchedule}
-        title={canCreateSchedule ? 'Criar novo agendamento' : 'Você não tem permissão para criar agendamentos'}
-      >
-        <i class="fas fa-plus"></i>
-        Novo Agendamento
-      </button>
+      {#if canCreateSchedule}
+        <button 
+          class="btn-primary" 
+          on:click={() => goto('/agendamentos/nova')}
+          title="Criar novo agendamento"
+        >
+          <i class="fas fa-plus"></i>
+          Novo Agendamento
+        </button>
+      {/if}
     </div>
   </div>
 
@@ -352,9 +350,15 @@
               </div>
               <div class="schedule-meta">
                 <div class="meta-item">
-                  <i class="fas fa-user"></i>
-                  <span>{s.user?.name || 'N/A'}</span>
+                  <i class="fas fa-user-tie"></i>
+                  <span>Técnico: {s.user?.name || 'N/A'}</span>
                 </div>
+                {#if s.createdBy && s.createdBy.id !== s.user?.id}
+                  <div class="meta-item">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Gerador: {s.createdBy?.name || 'N/A'}</span>
+                  </div>
+                {/if}
                 {#if s.notes}
                   <div class="meta-item">
                     <i class="fas fa-comment"></i>
@@ -372,14 +376,16 @@
                 <i class="fas fa-play"></i>
                 Iniciar
               </button>
-              <button
-                class="action-btn delete"
-                on:click={() => deleteSchedule(s.id)}
-                title="Excluir"
-              >
-                <i class="fas fa-trash"></i>
-                Excluir
-              </button>
+              {#if canDelete()}
+                <button
+                  class="action-btn delete"
+                  on:click={() => deleteSchedule(s.id)}
+                  title="Excluir"
+                >
+                  <i class="fas fa-trash"></i>
+                  Excluir
+                </button>
+              {/if}
             </div>
           </div>
         {/each}

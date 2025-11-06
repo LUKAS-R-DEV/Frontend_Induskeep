@@ -3,7 +3,7 @@
   import { SettingsApi } from "$lib/api/settings";
   import '$lib/styles/configuracoes.css';
   import { feedback } from '$lib/stores/feedback.stores.js';
-  import { isAdmin } from '$lib/utils/permissions.js';
+  import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
 
   let loading = true;
   let saving = false;
@@ -26,9 +26,9 @@
         user = JSON.parse(stored);
       }
 
-      // Verifica se é admin
-      if (!isAdmin(user?.role)) {
-        error = 'Acesso negado. Apenas administradores podem acessar esta página.';
+      // Verifica se é supervisor ou admin
+      if (!isSupervisorOrAdmin(user?.role)) {
+        error = 'Acesso negado. Apenas supervisores e administradores podem acessar esta página.';
         loading = false;
         return;
       }
@@ -214,7 +214,7 @@
       </div>
       <p>Carregando configurações...</p>
     </div>
-  {:else if error && !isAdmin(user?.role)}
+  {:else if error && !isSupervisorOrAdmin(user?.role)}
     <div class="error-state">
       <div class="error-icon">
         <i class="fas fa-lock"></i>

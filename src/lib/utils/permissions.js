@@ -8,7 +8,9 @@ export const RolePolicy = {
     "VIEW_PIECES",
     "CREATE_HISTORY",
     "VIEW_NOTIFICATIONS",
-    "VIEW_HISTORY",
+    // Removido VIEW_HISTORY - apenas supervisor e admin podem ver histórico
+    "UPDATE_ORDER",
+    "CREATE_STOCK_EXIT",
   ],
   SUPERVISOR: [
     "VIEW_MACHINES",
@@ -20,6 +22,18 @@ export const RolePolicy = {
     "VIEW_ORDERS",
     "VIEW_NOTIFICATIONS",
     "VIEW_HISTORY",
+    "CREATE_MACHINE",
+    "UPDATE_MACHINE",
+    "DELETE_MACHINE",
+    "CREATE_PIECE",
+    "UPDATE_PIECE",
+    "DELETE_PIECE",
+    "CREATE_STOCK_MOVEMENT",
+    "UPDATE_STOCK_MOVEMENT",
+    "DELETE_STOCK_MOVEMENT",
+    "MANAGE_SETTINGS",
+    "DELETE_ORDER",
+    // Não inclui permissões de usuários e logs (mantém apenas ADMIN)
   ],
   ADMIN: [
     "ALL", // acesso total
@@ -36,18 +50,18 @@ export const RoutePermissions = {
   "/usuarios/cadastro": ["ALL"],
   "/usuarios/[id]/editar": ["ALL"],
   "/equipamentos": ["VIEW_MACHINES"],
-  "/equipamentos/cadastro": ["ALL"], // Apenas ADMIN
-  "/equipamentos/[id]/editar": ["ALL"], // Apenas ADMIN
+  "/equipamentos/cadastro": ["CREATE_MACHINE", "ALL"], // Supervisor e Admin
+  "/equipamentos/[id]/editar": ["UPDATE_MACHINE", "ALL"], // Supervisor e Admin
   "/estoque": ["VIEW_PIECES"],
-  "/estoque/cadastro": ["ALL"], // Apenas ADMIN
-  "/estoque/movimentacoes": ["ALL"], // Apenas ADMIN/SUPERVISOR
-  "/estoque/movimentacoes/nova": ["ALL"], // Apenas ADMIN/SUPERVISOR
+  "/estoque/cadastro": ["CREATE_PIECE", "ALL"], // Supervisor e Admin
+  "/estoque/movimentacoes": ["CREATE_STOCK_EXIT", "ALL"], // Técnicos, Supervisores e Admin
+  "/estoque/movimentacoes/nova": ["CREATE_STOCK_EXIT", "ALL"], // Técnicos, Supervisores e Admin
   "/relatorios": ["VIEW_REPORTS"],
-  "/historico": ["VIEW_HISTORY"],
+  "/historico": ["VIEW_HISTORY"], // Apenas supervisor e admin (técnico não tem VIEW_HISTORY)
   "/notificacoes": ["VIEW_NOTIFICATIONS"],
   "/agendamentos": ["CREATE_SCHEDULE", "VIEW_MACHINES"], // Supervisor ou Admin
   "/agendamentos/nova": ["CREATE_SCHEDULE"],
-  "/configuracoes": ["ALL"], // Apenas ADMIN
+  "/configuracoes": ["MANAGE_SETTINGS", "ALL"], // Supervisor e Admin
 };
 
 /**

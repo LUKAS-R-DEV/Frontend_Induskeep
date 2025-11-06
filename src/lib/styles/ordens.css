@@ -476,6 +476,24 @@
   cursor: not-allowed;
 }
 
+.action-btn.start {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.action-btn.start:hover {
+  background: #bfdbfe;
+}
+
+.action-btn.pause {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.action-btn.pause:hover {
+  background: #fde68a;
+}
+
 .action-btn.delete {
   background: #fee2e2;
   color: #dc2626;

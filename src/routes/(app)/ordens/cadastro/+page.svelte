@@ -7,6 +7,7 @@
   import { NotificationsApi } from '$lib/api/notifications';
   import { goto } from '$app/navigation';
   import { feedback } from '$lib/stores/feedback.stores.js';
+  import { isAdmin } from '$lib/utils/permissions.js';
 
   let title = '';
   let description = '';
@@ -18,17 +19,28 @@
   let loading = false;
   let error = '';
   let loadingData = true;
+  let user = null;
 
   onMount(async () => {
     try {
+      // Carrega usuário do localStorage
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          user = JSON.parse(stored);
+        }
+      }
+
       const [dataMachines, dataUsers] = await Promise.all([
         MachinesApi.list(),
-        UserApi.list()
+        // Se for admin, busca todos os usuários; senão, busca apenas técnicos
+        isAdmin(user?.role) ? UserApi.list() : UserApi.listTechnicians()
       ]);
       machines = Array.isArray(dataMachines) ? dataMachines : [];
-      users = (Array.isArray(dataUsers) ? dataUsers : []).filter(
-        (u) => u.role === "TECHNICIAN"
-      );
+      // Se usou list(), filtra técnicos; se usou listTechnicians(), já vem filtrado
+      users = isAdmin(user?.role) 
+        ? (Array.isArray(dataUsers) ? dataUsers : []).filter((u) => u.role === "TECHNICIAN")
+        : (Array.isArray(dataUsers) ? dataUsers : []);
     } catch (err) {
       error = 'Erro ao carregar dados. Tente novamente.';
       console.error(err);
@@ -167,10 +179,25 @@
               disabled={loading}
             >
               <option value="">Selecione um equipamento</option>
-              {#each machines as m}
-                <option value={m.id}>{m.name} - {m.location || 'Sem localização'}</option>
+              {#each machines.filter(m => m.status === 'ACTIVE' || m.status === 'MAINTENANCE') as m}
+                <option value={m.id}>
+                  {m.name} - {m.location || 'Sem localização'}
+                  {#if m.status === 'MAINTENANCE'}
+                    (Em Manutenção)
+                  {/if}
+                </option>
               {/each}
             </select>
+            <small class="form-hint">
+              Apenas equipamentos ativos ou em manutenção podem ser selecionados.
+              {#if machines.filter(m => m.status === 'INACTIVE').length > 0}
+                <br>
+                <span style="color: #f59e0b;">
+                  <i class="fas fa-info-circle"></i>
+                  {machines.filter(m => m.status === 'INACTIVE').length} equipamento(s) inativo(s) não estão disponíveis para seleção.
+                </span>
+              {/if}
+            </small>
           </div>
 
           <div class="form-group">
@@ -207,8 +234,6 @@
           >
             <option value="PENDING">Pendente</option>
             <option value="IN_PROGRESS">Em Andamento</option>
-            <option value="COMPLETED">Concluída</option>
-            <option value="CANCELLED">Cancelada</option>
           </select>
           <small class="form-hint">Status inicial da ordem de serviço</small>
         </div>

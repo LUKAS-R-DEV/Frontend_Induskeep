@@ -4,6 +4,9 @@ export const UserApi = {
   list() {
     return apiFetch("/auth/users");
   },
+  listTechnicians() {
+    return apiFetch("/auth/technicians");
+  },
   getProfile() {
     return apiFetch("/auth/me");
   },

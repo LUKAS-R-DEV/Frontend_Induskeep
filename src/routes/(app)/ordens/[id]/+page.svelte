@@ -227,11 +227,224 @@
   }
 
   function canUpdate() {
-    return user && hasPermission(user.role, 'UPDATE_ORDER');
+    if (!user || !hasPermission(user.role, 'UPDATE_ORDER')) {
+      return false;
+    }
+    // Técnicos não podem editar (removido botão editar para técnicos)
+    const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
+    if (userRole === 'TECHNICIAN') {
+      return false;
+    }
+    return true;
   }
 
   function canDelete() {
-    return user && hasPermission(user.role, 'ALL');
+    return user && (hasPermission(user.role, 'DELETE_ORDER') || hasPermission(user.role, 'ALL'));
+  }
+
+  function canComplete() {
+    if (!ordem || !user) return false;
+    // Apenas técnicos podem concluir ordens
+    const userRole = String(user.role || '').toUpperCase().trim();
+    if (userRole !== 'TECHNICIAN') {
+      return false;
+    }
+    // Técnico só pode concluir ordens atribuídas a ele
+    if (ordem.userId !== user.id) {
+      return false;
+    }
+    return ordem.status !== 'CANCELLED';
+  }
+
+  function canStart() {
+    if (!ordem || !user) return false;
+    const userRole = String(user.role || '').toUpperCase().trim();
+    // Apenas técnicos podem iniciar ordens
+    if (userRole !== 'TECHNICIAN') {
+      return false;
+    }
+    // Técnico pode iniciar apenas ordens atribuídas a ele que estejam pendentes
+    return ordem.userId === user.id && ordem.status === 'PENDING';
+  }
+
+  function canPause() {
+    if (!ordem || !user) return false;
+    const userRole = String(user.role || '').toUpperCase().trim();
+    // Técnico pode pausar apenas ordens atribuídas a ele que estejam em andamento
+    if (userRole === 'TECHNICIAN') {
+      return ordem.userId === user.id && ordem.status === 'IN_PROGRESS';
+    }
+    // Supervisor e admin podem pausar qualquer ordem em andamento
+    return ordem.status === 'IN_PROGRESS';
+  }
+
+  async function startOrder() {
+    try {
+      const confirmed = await new Promise((resolve) => {
+        feedback.set({
+          show: true,
+          type: 'confirm',
+          title: 'Iniciar ordem',
+          message: 'Deseja iniciar esta ordem de serviço? A máquina será colocada em manutenção.',
+          confirmCallback: () => resolve(true)
+        });
+      });
+
+      if (!confirmed) return;
+
+      await OrdersApi.update(id, { status: 'IN_PROGRESS' });
+      
+      // Recarrega os dados da ordem
+      ordem = await OrdersApi.get(id);
+
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Ordem de serviço iniciada com sucesso.',
+      });
+    } catch (e) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: e?.message || 'Falha ao iniciar a ordem de serviço.',
+      });
+    }
+  }
+
+  async function pauseOrder() {
+    try {
+      const confirmed = await new Promise((resolve) => {
+        feedback.set({
+          show: true,
+          type: 'confirm',
+          title: 'Pausar ordem',
+          message: 'Deseja pausar esta ordem de serviço? A máquina voltará ao status anterior.',
+          confirmCallback: () => resolve(true)
+        });
+      });
+
+      if (!confirmed) return;
+
+      await OrdersApi.update(id, { status: 'PENDING' });
+      
+      // Recarrega os dados da ordem
+      ordem = await OrdersApi.get(id);
+
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Ordem de serviço pausada com sucesso.',
+      });
+    } catch (e) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: e?.message || 'Falha ao pausar a ordem de serviço.',
+      });
+    }
+  }
+
+  async function completeOrder() {
+    try {
+      const confirmed = await new Promise((resolve) => {
+        feedback.set({
+          show: true,
+          type: 'confirm',
+          title: 'Concluir ordem',
+          message: ordem.status === 'COMPLETED' 
+            ? 'Esta ordem já foi concluída anteriormente. Deseja concluí-la novamente? Isso criará um novo registro no histórico.'
+            : 'Deseja marcar esta ordem de serviço como concluída?',
+          confirmCallback: () => resolve(true)
+        });
+      });
+
+      if (!confirmed) return;
+
+      await HistoryApi.create({
+        orderId: id,
+        notes: ordem.status === 'COMPLETED' 
+          ? 'Ordem reaberta e concluída novamente'
+          : 'Ordem de serviço concluída pelo sistema'
+      });
+
+      // Recarrega os dados da ordem para atualizar o status
+      ordem = await OrdersApi.get(id);
+      
+      // Recarrega o histórico
+      try {
+        const historyData = await HistoryApi.get(id);
+        let historyRecords = [];
+        if (Array.isArray(historyData)) {
+          historyRecords = historyData;
+        } else if (historyData && Array.isArray(historyData.history)) {
+          historyRecords = historyData.history;
+        } else if (historyData && historyData.data && Array.isArray(historyData.data)) {
+          historyRecords = historyData.data;
+        }
+        
+        history = [];
+        if (ordem.createdAt) {
+          history.push({
+            type: 'created',
+            date: ordem.createdAt,
+            notes: `Ordem de serviço criada`,
+            status: ordem.status
+          });
+        }
+        if (historyRecords && historyRecords.length > 0) {
+          historyRecords.forEach(h => {
+            history.push({
+              type: 'completed',
+              date: h.completedAt || h.createdAt,
+              notes: h.notes || 'Ordem de serviço concluída',
+              status: 'COMPLETED'
+            });
+          });
+        }
+        if (ordem.updatedAt && ordem.updatedAt !== ordem.createdAt) {
+          const isUpdate = !historyRecords.some(h => {
+            const completedDate = new Date(h.completedAt || h.createdAt).getTime();
+            const updatedDate = new Date(ordem.updatedAt).getTime();
+            return Math.abs(completedDate - updatedDate) < 1000;
+          });
+          if (isUpdate) {
+            history.push({
+              type: 'updated',
+              date: ordem.updatedAt,
+              notes: `Ordem atualizada`,
+              status: ordem.status
+            });
+          }
+        }
+        history.sort((a, b) => {
+          const dateA = new Date(a.date || 0);
+          const dateB = new Date(b.date || 0);
+          return dateB - dateA;
+        });
+      } catch (e) {
+        console.warn('Erro ao recarregar histórico:', e);
+      }
+
+      feedback.set({
+        show: true,
+        type: 'success',
+        title: 'Sucesso',
+        message: ordem.status === 'COMPLETED' 
+          ? 'Ordem concluída novamente com sucesso.'
+          : 'Ordem de serviço concluída com sucesso.',
+      });
+    } catch (e) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: e?.message || 'Falha ao concluir a ordem de serviço.',
+      });
+    }
   }
 </script>
 
@@ -352,6 +565,15 @@
                 </div>
                 <div class="info-value">{ordem.user?.name || 'N/A'}</div>
               </div>
+              {#if ordem.createdBy && ordem.createdBy.id !== ordem.user?.id}
+                <div class="info-item">
+                  <div class="info-label">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Gerador da Ordem</span>
+                  </div>
+                  <div class="info-value">{ordem.createdBy?.name || 'N/A'}</div>
+                </div>
+              {/if}
               <div class="info-item">
                 <div class="info-label">
                   <i class="fas fa-calendar-plus"></i>
@@ -455,6 +677,36 @@
             </div>
             <div class="card-content">
               <div class="quick-actions">
+                {#if canStart()}
+                  <button 
+                    class="quick-action-btn start" 
+                    on:click={startOrder}
+                    title="Iniciar ordem de serviço"
+                  >
+                    <i class="fas fa-play-circle"></i>
+                    <span>Iniciar Ordem</span>
+                  </button>
+                {/if}
+                {#if canPause()}
+                  <button 
+                    class="quick-action-btn pause" 
+                    on:click={pauseOrder}
+                    title="Pausar ordem de serviço"
+                  >
+                    <i class="fas fa-pause-circle"></i>
+                    <span>Pausar Ordem</span>
+                  </button>
+                {/if}
+                {#if canComplete()}
+                  <button 
+                    class="quick-action-btn success" 
+                    on:click={completeOrder}
+                    title={ordem.status === 'COMPLETED' ? 'Concluir novamente' : 'Concluir ordem'}
+                  >
+                    <i class="fas fa-check-circle"></i>
+                    <span>{ordem.status === 'COMPLETED' ? 'Concluir Novamente' : 'Concluir Ordem'}</span>
+                  </button>
+                {/if}
                 {#if canUpdate()}
                   <button 
                     class="quick-action-btn primary" 
@@ -883,6 +1135,36 @@
   .quick-action-btn.danger:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+  }
+
+  .quick-action-btn.success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+
+  .quick-action-btn.success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+  }
+
+  .quick-action-btn.start {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+  }
+
+  .quick-action-btn.start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+  }
+
+  .quick-action-btn.pause {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+  }
+
+  .quick-action-btn.pause:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.3);
   }
 
   .quick-action-btn i {
