@@ -7,10 +7,11 @@ export const AuthApi = {
             body: JSON.stringify(payload),
         });
     },
-    resetPassword(payload) {
+    resetPassword(payload, options = {}) {
         return apiFetch("/auth/reset-password", {
             method: "POST",
             body: JSON.stringify(payload),
+            ...options,
         });
     },
 

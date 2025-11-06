@@ -2,6 +2,7 @@
   import "$lib/styles/resetSenha.css";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { AuthApi } from "$lib/api/auth";
   import { feedback } from '$lib/stores/feedback.stores.js';
 
@@ -14,8 +15,8 @@
   let showConfirmPassword = false;
 
   onMount(() => {
-    const params = new URLSearchParams(window.location.search);
-    token = params.get("token") || "";
+    // Usa a API do SvelteKit para obter os parâmetros da URL
+    token = $page.url.searchParams.get("token") || "";
     if (!token) {
       error = "Link inválido ou ausente. Verifique o link enviado por e-mail.";
     }
@@ -55,7 +56,8 @@
       loading = true;
       error = "";
       
-      const res = await AuthApi.resetPassword({ token, newPassword });
+      // Usa skipFeedback para evitar feedback duplicado, já que vamos mostrar nosso próprio feedback
+      const res = await AuthApi.resetPassword({ token, newPassword }, { skipFeedback: true });
       
       feedback.set({
         show: true,
@@ -68,8 +70,33 @@
         goto("/login");
       }, 2000);
     } catch (err) {
-      error = err?.message || "Erro ao redefinir a senha. Verifique o link ou tente novamente.";
+      console.error("Erro ao redefinir senha:", err);
+      
+      // Tenta extrair a mensagem de erro de diferentes formatos
+      let errorMessage = "Erro ao redefinir a senha. Verifique o link ou tente novamente.";
+      
+      if (err?.message) {
+        errorMessage = err.message;
+      } else if (err?.data?.message) {
+        errorMessage = err.data.message;
+      } else if (err?.data?.error) {
+        errorMessage = err.data.error;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      error = errorMessage;
       loading = false;
+      
+      // Também mostra feedback global para erros críticos
+      if (err?.status === 400 || err?.status === 404) {
+        feedback.set({
+          show: true,
+          type: 'error',
+          title: 'Erro ao redefinir senha',
+          message: errorMessage,
+        });
+      }
     }
   }
 
