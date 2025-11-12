@@ -8,6 +8,28 @@
   import { feedback } from '$lib/stores/feedback.stores.js';
   import { hasPermission } from '$lib/utils/permissions.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Plus,
+    Search,
+    Filter,
+    Calendar,
+    X,
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    ClipboardList,
+    Hash,
+    Factory,
+    User,
+    Eye,
+    Play,
+    Pause,
+    Pencil,
+    Check,
+    Trash2,
+  } from 'lucide-svelte';
+
   let search = '';
   let statusFilter = '';
   let dateFilter = '';
@@ -345,7 +367,7 @@
           on:click={() => goto('/ordens/cadastro')}
           title="Criar nova ordem de serviço"
         >
-          <i class="fas fa-plus"></i>
+          <Plus size={18} />
           Nova Ordem
         </button>
       {/if}
@@ -355,11 +377,11 @@
   <!-- Search and Filters -->
   <div class="filters-card">
     <div class="search-wrapper">
-      <i class="fas fa-search search-icon"></i>
+      <Search size={18} class="search-icon" />
       <input 
         type="text" 
         class="search-input"
-        placeholder="Buscar por título, ID ou equipamento..." 
+        placeholder="Digite o título, número da OS ou nome do equipamento..." 
         bind:value={search} 
       />
     </div>
@@ -367,7 +389,7 @@
     <div class="filters-row">
       <div class="filter-item">
         <label for="statusFilter">
-          <i class="fas fa-filter"></i>
+          <Filter size={16} />
           Status
         </label>
         <select id="statusFilter" bind:value={statusFilter} class="filter-select">
@@ -380,7 +402,7 @@
 
       <div class="filter-item">
         <label for="dateFilter">
-          <i class="fas fa-calendar"></i>
+          <Calendar size={16} />
           Data de Abertura
         </label>
         <input 
@@ -393,7 +415,7 @@
 
       {#if search || statusFilter || dateFilter}
         <button class="btn-clear-filters" on:click={() => { search = ''; statusFilter = ''; dateFilter = ''; }}>
-          <i class="fas fa-times"></i>
+          <X size={16} />
           Limpar Filtros
         </button>
       {/if}
@@ -404,19 +426,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando ordens de serviço...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -425,7 +447,7 @@
     <div class="orders-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-tasks"></i>
+          <ClipboardList size={20} />
           Ordens de Serviço ({filteredOrders.length})
         </h2>
       </div>
@@ -435,7 +457,7 @@
           <div class="order-card">
             <div class="order-header">
               <div class="order-id">
-                <i class="fas fa-hashtag"></i>
+                <Hash size={16} />
                 OS-{(order.id || '').slice(0, 8).toUpperCase()}
               </div>
               <span class="status-badge {getStatusClass(order.status)}">
@@ -451,15 +473,15 @@
 
               <div class="order-meta">
                 <div class="meta-item">
-                  <i class="fas fa-industry"></i>
+                  <Factory size={14} />
                   <span>{order.machine?.name || 'N/A'}</span>
                 </div>
                 <div class="meta-item">
-                  <i class="fas fa-user"></i>
+                  <User size={14} />
                   <span>{order.user?.name || 'N/A'}</span>
                 </div>
                 <div class="meta-item">
-                  <i class="fas fa-calendar"></i>
+                  <Calendar size={14} />
                   <span>{formatDate(order.createdAt)}</span>
                 </div>
               </div>
@@ -471,7 +493,7 @@
                 on:click={() => goto(`/ordens/${order.id}`)}
                 title="Ver detalhes"
               >
-                <i class="fas fa-eye"></i>
+                <Eye size={16} />
                 Ver
               </button>
               {#if canStart(order)}
@@ -480,7 +502,7 @@
                   on:click={() => startOrder(order.id)}
                   title="Iniciar ordem"
                 >
-                  <i class="fas fa-play"></i>
+                  <Play size={16} />
                   Iniciar
                 </button>
               {/if}
@@ -490,7 +512,7 @@
                   on:click={() => pauseOrder(order.id)}
                   title="Pausar ordem"
                 >
-                  <i class="fas fa-pause"></i>
+                  <Pause size={16} />
                   Pausar
                 </button>
               {/if}
@@ -500,7 +522,7 @@
                   on:click={() => goto(`/ordens/${order.id}/editar`)}
                   title="Editar"
                 >
-                  <i class="fas fa-edit"></i>
+                  <Pencil size={16} />
                   Editar
                 </button>
               {/if}
@@ -510,7 +532,7 @@
                   on:click={() => completeOrder(order.id)}
                   title={order.status === 'COMPLETED' ? 'Concluir novamente' : 'Concluir'}
                 >
-                  <i class="fas fa-check"></i>
+                  <Check size={16} />
                   {order.status === 'COMPLETED' ? 'Concluir Novamente' : 'Concluir'}
                 </button>
               {/if}
@@ -520,7 +542,7 @@
                   on:click={() => deleteOrder(order.id)}
                   title="Excluir"
                 >
-                  <i class="fas fa-trash"></i>
+                  <Trash2 size={16} />
                   Excluir
                 </button>
               {/if}
@@ -532,16 +554,72 @@
   {:else}
     <div class="empty-state">
       <div class="empty-icon">
-        <i class="fas fa-clipboard-list"></i>
+        <ClipboardList size={32} color="#94a3b8" />
       </div>
       <h3>Nenhuma ordem encontrada</h3>
       <p>{search || statusFilter || dateFilter ? 'Tente ajustar os filtros de busca.' : 'Comece criando uma nova ordem de serviço.'}</p>
       {#if canCreate() && !search && !statusFilter && !dateFilter}
         <button class="btn-primary" on:click={() => goto('/ordens/cadastro')}>
-          <i class="fas fa-plus"></i>
+          <Plus size={18} />
           Criar Primeira Ordem
         </button>
       {/if}
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Ajustes para ícones em labels */
+  label svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-primary svg,
+  .btn-secondary svg,
+  .btn-retry svg,
+  .btn-clear-filters svg,
+  .action-btn svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para ícones em meta-items */
+  .meta-item svg {
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para order-id */
+  .order-id {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>

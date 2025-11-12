@@ -6,6 +6,23 @@
   import { feedback } from '$lib/stores/feedback.stores.js';
   import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Plus,
+    Search,
+    Filter,
+    X,
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    Factory,
+    Cog,
+    Barcode,
+    MapPin,
+    Pencil,
+    Trash2,
+  } from 'lucide-svelte';
+
   let search = '';
   let statusFilter = '';
   let equipamentos = [];
@@ -107,7 +124,7 @@
       </div>
       {#if isSupervisorOrAdmin(user?.role)}
         <button class="btn-primary" on:click={() => goto('/equipamentos/cadastro')}>
-          <i class="fas fa-plus"></i>
+          <Plus size={18} />
           Novo Equipamento
         </button>
       {/if}
@@ -117,11 +134,11 @@
   <!-- Filters -->
   <div class="filters-card">
     <div class="search-wrapper">
-      <i class="fas fa-search search-icon"></i>
+      <Search size={18} class="search-icon" />
       <input 
         type="text" 
         class="search-input"
-        placeholder="Buscar por nome, série ou localização..." 
+        placeholder="Digite o nome do equipamento, número de série ou localização..." 
         bind:value={search} 
       />
     </div>
@@ -129,7 +146,7 @@
     <div class="filters-row">
       <div class="filter-item">
         <label for="statusFilter">
-          <i class="fas fa-filter"></i>
+          <Filter size={16} />
           Status
         </label>
         <select id="statusFilter" bind:value={statusFilter} class="filter-select">
@@ -142,7 +159,7 @@
 
       {#if search || statusFilter}
         <button class="btn-clear-filters" on:click={() => { search = ''; statusFilter = ''; }}>
-          <i class="fas fa-times"></i>
+          <X size={16} />
           Limpar Filtros
         </button>
       {/if}
@@ -153,19 +170,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando equipamentos...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -174,7 +191,7 @@
     <div class="equipments-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-industry"></i>
+          <Factory size={20} />
           Equipamentos ({filteredEquipments.length})
         </h2>
       </div>
@@ -183,19 +200,19 @@
         {#each filteredEquipments as eq}
           <div class="equipment-card">
             <div class="equipment-icon">
-              <i class="fas fa-cogs"></i>
+              <Cog size={28} color="white" />
             </div>
             
             <div class="equipment-info">
               <h3 class="equipment-name">{eq.name}</h3>
               <div class="equipment-meta">
                 <div class="meta-item">
-                  <i class="fas fa-barcode"></i>
+                  <Barcode size={14} />
                   <span>Série: {eq.serial || 'N/A'}</span>
                 </div>
                 {#if eq.location}
                   <div class="meta-item">
-                    <i class="fas fa-map-marker-alt"></i>
+                    <MapPin size={14} />
                     <span>{eq.location}</span>
                   </div>
                 {/if}
@@ -215,7 +232,7 @@
                   on:click={() => editarEquipamento(eq)}
                   title="Editar equipamento"
                 >
-                  <i class="fas fa-edit"></i>
+                  <Pencil size={16} />
                   Editar
                 </button>
                 <button
@@ -223,7 +240,7 @@
                   on:click={() => deletarEquipamento(eq)}
                   title="Excluir equipamento"
                 >
-                  <i class="fas fa-trash"></i>
+                  <Trash2 size={16} />
                   Excluir
                 </button>
               </div>
@@ -235,16 +252,69 @@
   {:else}
     <div class="empty-state">
       <div class="empty-icon">
-        <i class="fas fa-cogs"></i>
+        <Cog size={32} color="#94a3b8" />
       </div>
       <h3>Nenhum equipamento encontrado</h3>
       <p>{search || statusFilter ? 'Tente ajustar os filtros de busca.' : 'Comece cadastrando um novo equipamento.'}</p>
       {#if isSupervisorOrAdmin(user?.role) && !search && !statusFilter}
         <button class="btn-primary" on:click={() => goto('/equipamentos/cadastro')}>
-          <i class="fas fa-plus"></i>
+          <Plus size={18} />
           Cadastrar Equipamento
         </button>
       {/if}
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Ajustes para ícones em labels */
+  label svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-primary svg,
+  .btn-retry svg,
+  .btn-clear-filters svg,
+  .action-btn svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para meta-items */
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .meta-item svg {
+    flex-shrink: 0;
+  }
+</style>

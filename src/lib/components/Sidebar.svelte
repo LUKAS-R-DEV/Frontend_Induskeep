@@ -4,6 +4,25 @@
   import { afterNavigate } from '$app/navigation';
   import { canAccessRoute, hasPermission, isAdmin } from '$lib/utils/permissions.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Home,
+    ClipboardList,
+    Users,
+    Cog,
+    Boxes,
+    BarChart3,
+    History,
+    Bell,
+    Calendar,
+    Settings,
+    FileText,
+    Factory,
+    X,
+    UserCircle,
+    LogOut,
+  } from 'lucide-svelte';
+
   let user = null;
   let sidebarOpen = false;
 
@@ -77,77 +96,77 @@
   const menuItems = [
     {
       label: 'Dashboard',
-      icon: 'fas fa-home',
+      icon: Home,
       href: '/dashboard',
       permission: 'VIEW_MACHINES', // Todos podem ver
       roles: ['TECHNICIAN', 'SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Ordens de Serviço',
-      icon: 'fas fa-tasks',
+      icon: ClipboardList,
       href: '/ordens',
       permission: 'VIEW_ORDERS',
       roles: ['TECHNICIAN', 'SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Usuários',
-      icon: 'fas fa-users',
+      icon: Users,
       href: '/usuarios',
       permission: 'ALL',
       roles: ['ADMIN']
     },
     {
       label: 'Equipamentos',
-      icon: 'fas fa-cogs',
+      icon: Cog,
       href: '/equipamentos',
       permission: 'VIEW_MACHINES',
       roles: ['TECHNICIAN', 'SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Estoque',
-      icon: 'fas fa-boxes',
+      icon: Boxes,
       href: '/estoque',
       permission: 'VIEW_PIECES',
       roles: ['TECHNICIAN', 'SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Relatórios',
-      icon: 'fas fa-chart-bar',
+      icon: BarChart3,
       href: '/relatorios',
       permission: 'VIEW_REPORTS',
       roles: ['SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Histórico',
-      icon: 'fas fa-history',
+      icon: History,
       href: '/historico',
       permission: 'VIEW_HISTORY',
       roles: ['SUPERVISOR', 'ADMIN'] // Apenas supervisor e admin
     },
     {
       label: 'Notificações',
-      icon: 'fas fa-bell',
+      icon: Bell,
       href: '/notificacoes',
       permission: 'VIEW_NOTIFICATIONS',
       roles: ['TECHNICIAN', 'SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Agendamentos',
-      icon: 'fas fa-calendar-alt',
+      icon: Calendar,
       href: '/agendamentos',
       permission: 'CREATE_SCHEDULE',
       roles: ['SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Configurações',
-      icon: 'fas fa-gear',
+      icon: Settings,
       href: '/configuracoes',
       permission: 'MANAGE_SETTINGS',
       roles: ['SUPERVISOR', 'ADMIN']
     },
     {
       label: 'Logs de Auditoria',
-      icon: 'fas fa-file-alt',
+      icon: FileText,
       href: '/logs',
       permission: 'ALL',
       roles: ['ADMIN']
@@ -229,11 +248,11 @@
 <aside class="sidebar {sidebarOpen ? 'open' : ''}">
   <div class="sidebar-header">
     <div class="logo-container">
-      <i class="fas fa-industry"></i>
+      <Factory size={28} />
       <span class="logo-text">INDUSKEEP</span>
     </div>
     <button class="close-sidebar-btn" on:click={closeSidebar} aria-label="Fechar menu">
-      <i class="fas fa-times"></i>
+      <X size={18} />
     </button>
   </div>
 
@@ -253,7 +272,7 @@
                 data-sveltekit-preload-data="hover"
                 on:click={closeSidebar}
               >
-                <i class={item.icon}></i>
+                <svelte:component this={item.icon} size={20} />
                 <span>{item.label}</span>
               </a>
             </li>
@@ -266,7 +285,7 @@
   <div class="sidebar-footer">
     <div class="user-section">
       <div class="user-avatar">
-        <i class="fas fa-user-circle"></i>
+        <UserCircle size={24} />
       </div>
       <div class="user-details">
         <div class="user-name">{user?.name || 'Usuário'}</div>
@@ -274,7 +293,7 @@
       </div>
     </div>
     <button class="logout-btn" on:click={handleLogout}>
-      <i class="fas fa-sign-out-alt"></i>
+      <LogOut size={18} />
       <span>Sair</span>
     </button>
   </div>
@@ -317,9 +336,11 @@
     flex: 1;
   }
 
-  .logo-container i {
-    font-size: 1.75rem;
+  .logo-container :global(svg) {
+    width: 28px;
+    height: 28px;
     color: #3b82f6;
+    flex-shrink: 0;
   }
 
   .logo-text {
@@ -344,7 +365,12 @@
     transition: all 0.2s ease;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+  }
+
+  .close-sidebar-btn :global(svg) {
+    width: 18px;
+    height: 18px;
+    color: rgba(255, 255, 255, 0.7);
   }
 
   .close-sidebar-btn:hover {
@@ -395,12 +421,12 @@
     position: relative;
   }
 
-  .menu-link i {
+  .menu-link :global(svg) {
     width: 20px;
-    text-align: center;
-    font-size: 1.1rem;
+    height: 20px;
     color: rgba(255, 255, 255, 0.6);
     transition: color 0.2s ease;
+    flex-shrink: 0;
   }
 
   .menu-link:hover {
@@ -409,7 +435,7 @@
     transform: translateX(4px);
   }
 
-  .menu-link:hover i {
+  .menu-link:hover :global(svg) {
     color: #60a5fa;
   }
 
@@ -419,7 +445,7 @@
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
 
-  .menu-link.active i {
+  .menu-link.active :global(svg) {
     color: #ffffff;
   }
 
@@ -460,8 +486,13 @@
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    font-size: 1.5rem;
     flex-shrink: 0;
+  }
+
+  .user-avatar :global(svg) {
+    width: 24px;
+    height: 24px;
+    color: #ffffff;
   }
 
   .user-details {
@@ -509,8 +540,10 @@
     transform: translateY(-1px);
   }
 
-  .logout-btn i {
-    font-size: 1rem;
+  .logout-btn :global(svg) {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
   }
 
   /* Scrollbar */

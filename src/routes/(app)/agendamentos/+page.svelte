@@ -8,6 +8,28 @@
   import { hasPermission } from '$lib/utils/permissions.js';
   import { getUser } from '$lib/stores/users.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Plus,
+    Calendar,
+    List,
+    Search,
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    ChevronLeft,
+    ChevronRight,
+    CalendarDays,
+    CalendarCheck,
+    Clock,
+    User,
+    UserCog,
+    MessageSquare,
+    Play,
+    Trash2,
+    CalendarX,
+  } from 'lucide-svelte';
+
   let currentDate = new Date();
   let currentView = "calendar";
   let schedules = [];
@@ -211,7 +233,7 @@
           on:click={() => goto('/agendamentos/nova')}
           title="Criar novo agendamento"
         >
-          <i class="fas fa-plus"></i>
+          <Plus size={18} />
           Novo Agendamento
         </button>
       {/if}
@@ -225,24 +247,24 @@
         class="view-option {currentView === 'calendar' ? 'active' : ''}"
         on:click={() => (currentView = 'calendar')}
       >
-        <i class="fas fa-calendar"></i>
+        <Calendar size={16} />
         Calendário
       </button>
       <button
         class="view-option {currentView === 'list' ? 'active' : ''}"
         on:click={() => (currentView = 'list')}
       >
-        <i class="fas fa-list"></i>
+        <List size={16} />
         Lista
       </button>
     </div>
     {#if currentView === 'list'}
       <div class="search-wrapper">
-        <i class="fas fa-search search-icon"></i>
+        <Search size={18} class="search-icon" />
         <input 
           type="text" 
           class="search-input"
-          placeholder="Buscar agendamentos..." 
+          placeholder="Digite o título, equipamento ou técnico do agendamento..." 
           bind:value={search} 
         />
       </div>
@@ -253,19 +275,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando agendamentos...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -275,15 +297,15 @@
       <div class="calendar-header">
         <div class="calendar-nav">
           <button class="calendar-nav-btn" on:click={previousMonth} title="Mês anterior">
-            <i class="fas fa-chevron-left"></i>
+            <ChevronLeft size={18} />
           </button>
           <div class="current-month">{currentMonthLabel}</div>
           <button class="calendar-nav-btn" on:click={nextMonth} title="Próximo mês">
-            <i class="fas fa-chevron-right"></i>
+            <ChevronRight size={18} />
           </button>
         </div>
         <button class="btn-secondary" on:click={goToToday}>
-          <i class="fas fa-calendar-day"></i>
+          <CalendarDays size={16} />
           Hoje
         </button>
       </div>
@@ -329,7 +351,7 @@
     <div class="schedules-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-list"></i>
+          <List size={20} />
           Agendamentos ({filteredSchedules.length})
         </h2>
       </div>
@@ -338,30 +360,30 @@
         {#each filteredSchedules as s}
           <div class="schedule-item-card">
             <div class="schedule-icon">
-              <i class="fas fa-calendar-check"></i>
+              <CalendarCheck size={24} color="#3b82f6" />
             </div>
             <div class="schedule-content">
               <div class="schedule-header">
                 <h3 class="schedule-title">{s.machine?.name || 'Agendamento'}</h3>
                 <span class="schedule-date">
-                  <i class="fas fa-clock"></i>
+                  <Clock size={14} />
                   {formatDate(s.date)}
                 </span>
               </div>
               <div class="schedule-meta">
                 <div class="meta-item">
-                  <i class="fas fa-user-tie"></i>
+                  <User size={14} />
                   <span>Técnico: {s.user?.name || 'N/A'}</span>
                 </div>
                 {#if s.createdBy && s.createdBy.id !== s.user?.id}
                   <div class="meta-item">
-                    <i class="fas fa-user-cog"></i>
+                    <UserCog size={14} />
                     <span>Gerador: {s.createdBy?.name || 'N/A'}</span>
                   </div>
                 {/if}
                 {#if s.notes}
                   <div class="meta-item">
-                    <i class="fas fa-comment"></i>
+                    <MessageSquare size={14} />
                     <span>{s.notes}</span>
                   </div>
                 {/if}
@@ -373,7 +395,7 @@
                 on:click={() => startMaintenance(s)}
                 title="Iniciar manutenção"
               >
-                <i class="fas fa-play"></i>
+                <Play size={16} />
                 Iniciar
               </button>
               {#if canDelete()}
@@ -382,7 +404,7 @@
                   on:click={() => deleteSchedule(s.id)}
                   title="Excluir"
                 >
-                  <i class="fas fa-trash"></i>
+                  <Trash2 size={16} />
                   Excluir
                 </button>
               {/if}
@@ -394,16 +416,71 @@
   {:else}
     <div class="empty-state">
       <div class="empty-icon">
-        <i class="fas fa-calendar-times"></i>
+        <CalendarX size={32} color="#94a3b8" />
       </div>
       <h3>Nenhum agendamento encontrado</h3>
       <p>{search ? 'Tente ajustar a busca.' : 'Comece criando um novo agendamento.'}</p>
       {#if canCreateSchedule && !search}
         <button class="btn-primary" on:click={() => goto('/agendamentos/nova')}>
-          <i class="fas fa-plus"></i>
+          <Plus size={18} />
           Criar Agendamento
         </button>
       {/if}
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-primary svg,
+  .btn-secondary svg,
+  .btn-retry svg,
+  .action-btn svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para meta-items */
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .meta-item svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para schedule-date */
+  .schedule-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+</style>

@@ -9,6 +9,30 @@
   import * as echarts from 'echarts';
   import { feedback } from '$lib/stores/feedback.stores.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    TrendingUp,
+    Factory,
+    ClipboardList,
+    CheckCircle2,
+    Percent,
+    Clock,
+    History,
+    Package,
+    BarChart3,
+    TriangleAlert,
+    FileDown,
+    Wrench,
+    Box,
+    LineChart,
+    Cog,
+    ChevronRight,
+    PieChart,
+  } from 'lucide-svelte';
+
   let loading = true;
   let error = '';
   let overview = {};
@@ -159,19 +183,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando relatórios...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -179,13 +203,13 @@
     <!-- KPIs -->
     <div class="kpi-section">
       <h2 class="section-title">
-        <i class="fas fa-chart-line"></i>
+        <TrendingUp size={20} />
         Indicadores de Desempenho
       </h2>
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-icon">
-            <i class="fas fa-industry"></i>
+            <Factory size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Total de Máquinas</span>
@@ -195,7 +219,7 @@
 
         <div class="kpi-card">
           <div class="kpi-icon">
-            <i class="fas fa-tasks"></i>
+            <ClipboardList size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Total de OS</span>
@@ -205,7 +229,7 @@
 
         <div class="kpi-card success">
           <div class="kpi-icon">
-            <i class="fas fa-check-circle"></i>
+            <CheckCircle2 size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Concluídas</span>
@@ -215,7 +239,7 @@
 
         <div class="kpi-card primary">
           <div class="kpi-icon">
-            <i class="fas fa-percentage"></i>
+            <Percent size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Taxa de Conclusão</span>
@@ -225,7 +249,7 @@
 
         <div class="kpi-card">
           <div class="kpi-icon">
-            <i class="fas fa-clock"></i>
+            <Clock size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Tempo Médio (MTTR)</span>
@@ -235,7 +259,7 @@
 
         <div class="kpi-card">
           <div class="kpi-icon">
-            <i class="fas fa-history"></i>
+            <History size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Intervalo entre Falhas (MTBF)</span>
@@ -245,7 +269,7 @@
 
         <div class="kpi-card">
           <div class="kpi-icon">
-            <i class="fas fa-box"></i>
+            <Package size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Peças Usadas</span>
@@ -255,7 +279,7 @@
 
         <div class="kpi-card">
           <div class="kpi-icon">
-            <i class="fas fa-chart-bar"></i>
+            <BarChart3 size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Média Peças/OS</span>
@@ -265,7 +289,7 @@
 
         <div class="kpi-card warning">
           <div class="kpi-icon">
-            <i class="fas fa-exclamation-triangle"></i>
+            <TriangleAlert size={28} color="white" />
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Ordens Pendentes</span>
@@ -278,55 +302,55 @@
     <!-- Export Cards -->
     <div class="reports-section">
       <h2 class="section-title">
-        <i class="fas fa-file-export"></i>
+        <FileDown size={20} />
         Relatórios Disponíveis
       </h2>
       <div class="report-cards">
         <div class="report-card" on:click={() => exportReport('reports', historico)}>
           <div class="report-icon primary">
-            <i class="fas fa-tools"></i>
+            <Wrench size={28} color="white" />
           </div>
           <h3 class="report-title">Relatório de OS por Período</h3>
           <p class="report-description">Relatório detalhado de ordens de serviço, com status e técnicos.</p>
           <div class="report-footer">
             <span class="report-badge">PDF, CSV</span>
-            <i class="fas fa-chevron-right"></i>
+            <ChevronRight size={18} />
           </div>
         </div>
 
         <div class="report-card" on:click={() => exportReport('inventory', stockMovements)}>
           <div class="report-icon success">
-            <i class="fas fa-box"></i>
+            <Box size={28} color="white" />
           </div>
           <h3 class="report-title">Consumo de Peças</h3>
           <p class="report-description">Análise de consumo de peças por equipamento e tipo de manutenção.</p>
           <div class="report-footer">
             <span class="report-badge">PDF, CSV</span>
-            <i class="fas fa-chevron-right"></i>
+            <ChevronRight size={18} />
           </div>
         </div>
 
         <div class="report-card" on:click={() => exportReport('analytics', overview)}>
           <div class="report-icon danger">
-            <i class="fas fa-chart-line"></i>
+            <LineChart size={28} color="white" />
           </div>
           <h3 class="report-title">Indicadores de Performance</h3>
           <p class="report-description">KPIs de manutenção: MTBF, MTTR e disponibilidade.</p>
           <div class="report-footer">
             <span class="report-badge">PDF</span>
-            <i class="fas fa-chevron-right"></i>
+            <ChevronRight size={18} />
           </div>
         </div>
 
         <div class="report-card" on:click={() => exportReport('machines', machines)}>
           <div class="report-icon warning">
-            <i class="fas fa-cogs"></i>
+            <Cog size={28} color="white" />
           </div>
           <h3 class="report-title">Relatório de Máquinas</h3>
           <p class="report-description">Lista de máquinas com status, localização e OS associadas.</p>
           <div class="report-footer">
             <span class="report-badge">PDF, CSV</span>
-            <i class="fas fa-chevron-right"></i>
+            <ChevronRight size={18} />
           </div>
         </div>
       </div>
@@ -335,7 +359,7 @@
     <!-- Charts -->
     <div class="reports-section">
       <h2 class="section-title">
-        <i class="fas fa-chart-pie"></i>
+        <PieChart size={20} />
         Gráficos de Análise
       </h2>
       <div class="charts-grid">
@@ -358,3 +382,34 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-retry svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para section-title */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para report-footer */
+  .report-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>

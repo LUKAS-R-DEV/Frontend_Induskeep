@@ -5,6 +5,22 @@
   import { isAdmin } from '$lib/utils/permissions';
   import { feedback } from '$lib/stores/feedback.stores.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Loader2,
+    Lock,
+    Filter,
+    Zap,
+    User,
+    X,
+    List,
+    ChevronLeft,
+    ChevronRight,
+    FileText,
+    Info,
+    UserCircle,
+  } from 'lucide-svelte';
+
   let loading = true;
   let error = '';
   let user = null;
@@ -181,14 +197,14 @@
   {#if loading && logs.length === 0}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando logs...</p>
     </div>
   {:else if error && !isAdmin(user?.role)}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-lock"></i>
+        <Lock size={36} color="#ef4444" />
       </div>
       <h3>Acesso Negado</h3>
       <p>{error}</p>
@@ -199,7 +215,7 @@
       <div class="filters-row">
         <div class="filter-item">
           <label for="filterModule">
-            <i class="fas fa-filter"></i>
+            <Filter size={16} />
             Módulo
           </label>
           <select id="filterModule" bind:value={filterModule} class="filter-select" on:change={loadLogs}>
@@ -211,7 +227,7 @@
 
         <div class="filter-item">
           <label for="filterAction">
-            <i class="fas fa-bolt"></i>
+            <Zap size={16} />
             Ação
           </label>
           <select id="filterAction" bind:value={filterAction} class="filter-select" on:change={loadLogs}>
@@ -223,7 +239,7 @@
 
         <div class="filter-item">
           <label for="filterUserId">
-            <i class="fas fa-user"></i>
+            <User size={16} />
             Usuário
           </label>
           <select id="filterUserId" bind:value={filterUserId} class="filter-select" on:change={loadLogs}>
@@ -236,7 +252,7 @@
 
         {#if hasFilters}
           <button class="btn-clear-filters" on:click={clearFilters}>
-            <i class="fas fa-times"></i>
+            <X size={16} />
             Limpar Filtros
           </button>
         {/if}
@@ -247,7 +263,7 @@
     <div class="logs-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-list"></i>
+          <List size={20} />
           Registros de Auditoria ({total})
         </h2>
       </div>
@@ -274,7 +290,7 @@
                     {#if log.user}
                       <div class="user-cell">
                         <div class="user-avatar-small">
-                          <i class="fas fa-user"></i>
+                          <UserCircle size={20} color="white" />
                         </div>
                         <span>{log.user.name || 'N/A'}</span>
                       </div>
@@ -311,7 +327,7 @@
               disabled={currentPage === 1}
               on:click={() => changePage(currentPage - 1)}
             >
-              <i class="fas fa-chevron-left"></i>
+              <ChevronLeft size={16} />
               Anterior
             </button>
             
@@ -325,14 +341,14 @@
               on:click={() => changePage(currentPage + 1)}
             >
               Próxima
-              <i class="fas fa-chevron-right"></i>
+              <ChevronRight size={16} />
             </button>
           </div>
         {/if}
       {:else}
         <div class="empty-state">
           <div class="empty-icon">
-            <i class="fas fa-file-alt"></i>
+            <FileText size={32} color="#94a3b8" />
           </div>
           <h3>Nenhum log encontrado</h3>
           <p>{hasFilters ? 'Tente ajustar os filtros de busca.' : 'Ainda não há registros de auditoria.'}</p>
@@ -348,11 +364,11 @@
     <div class="modal-content" on:click|stopPropagation>
       <div class="modal-header">
         <h2 class="modal-title">
-          <i class="fas fa-info-circle"></i>
+          <Info size={20} />
           Detalhes do Log
         </h2>
         <button class="modal-close" on:click={closeDetails}>
-          <i class="fas fa-times"></i>
+          <X size={18} />
         </button>
       </div>
       
@@ -440,7 +456,7 @@
       
       <div class="modal-footer">
         <button class="btn-secondary" on:click={closeDetails}>
-          <i class="fas fa-times"></i>
+          <X size={16} />
           Fechar
         </button>
       </div>
@@ -527,10 +543,6 @@
     color: #475569;
   }
 
-  .filter-item label i {
-    color: #3b82f6;
-    font-size: 0.875rem;
-  }
 
   .filter-select {
     padding: 0.75rem 1rem;
@@ -595,9 +607,6 @@
     margin: 0;
   }
 
-  .card-title i {
-    color: #3b82f6;
-  }
 
   /* Table */
   .table-wrapper {
@@ -663,8 +672,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-size: 0.875rem;
     flex-shrink: 0;
   }
 
@@ -786,12 +793,9 @@
   }
 
   .loading-spinner {
-    width: 60px;
-    height: 60px;
-    border: 4px solid #e2e8f0;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 1.5rem;
   }
 
@@ -815,19 +819,10 @@
   }
 
   .error-icon {
-    width: 80px;
-    height: 80px;
-    background: #fee2e2;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 1.5rem;
-  }
-
-  .error-icon i {
-    font-size: 2.5rem;
-    color: #ef4444;
   }
 
   .error-state h3 {
@@ -852,19 +847,10 @@
   }
 
   .empty-icon {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: #f1f5f9;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 1.5rem;
-  }
-
-  .empty-icon i {
-    font-size: 2.5rem;
-    color: #94a3b8;
   }
 
   .empty-state h3 {
@@ -934,9 +920,6 @@
     margin: 0;
   }
 
-  .modal-title i {
-    color: #3b82f6;
-  }
 
   .modal-close {
     width: 40px;

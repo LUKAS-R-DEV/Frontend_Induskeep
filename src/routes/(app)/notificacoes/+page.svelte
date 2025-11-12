@@ -4,6 +4,18 @@
   import { NotificationsApi } from "$lib/api/notifications";
   import { feedback } from '$lib/stores/feedback.stores.js';
 
+  // ✅ Ícones Lucide
+  import {
+    CheckCheck,
+    Trash2,
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    Bell,
+    BellOff,
+    Check,
+  } from 'lucide-svelte';
+
   let loading = true;
   let notificacoes = [];
   let error = "";
@@ -121,13 +133,13 @@
       <div class="header-actions">
         {#if notificacoes.filter(n => !n.read).length > 0}
           <button class="btn-secondary" on:click={marcarTodasLidas}>
-            <i class="fas fa-check-double"></i>
+            <CheckCheck size={18} />
             Marcar todas como lidas
           </button>
         {/if}
         {#if notificacoes.length > 0}
           <button class="btn-danger" on:click={limparTodas}>
-            <i class="fas fa-trash"></i>
+            <Trash2 size={18} />
             Limpar todas
           </button>
         {/if}
@@ -139,19 +151,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando notificações...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -160,7 +172,7 @@
     <div class="notifications-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-bell"></i>
+          <Bell size={20} />
           Notificações ({notificacoes.length})
           {#if notificacoes.filter(n => !n.read).length > 0}
             <span class="unread-count">
@@ -177,7 +189,7 @@
             on:click={() => !n.read && marcarComoLida(n.id)}
           >
             <div class="notification-icon {n.read ? '' : 'active'}">
-              <i class="fas fa-bell"></i>
+              <Bell size={24} color={n.read ? "#94a3b8" : "#3b82f6"} />
             </div>
             <div class="notification-content">
               <div class="notification-header">
@@ -197,7 +209,7 @@
                 on:click|stopPropagation={() => marcarComoLida(n.id)}
                 title="Marcar como lida"
               >
-                <i class="fas fa-check"></i>
+                <Check size={16} />
               </button>
             {/if}
           </div>
@@ -207,10 +219,37 @@
   {:else}
     <div class="empty-state">
       <div class="empty-icon">
-        <i class="fas fa-bell-slash"></i>
+        <BellOff size={32} color="#94a3b8" />
       </div>
       <h3>Nenhuma notificação</h3>
       <p>Você está em dia! Não há notificações no momento.</p>
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-secondary svg,
+  .btn-danger svg,
+  .btn-retry svg,
+  .mark-read-btn svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>

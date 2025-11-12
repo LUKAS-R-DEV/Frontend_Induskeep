@@ -6,6 +6,25 @@
   import { feedback } from '$lib/stores/feedback.stores.js';
   import { isAdmin } from '$lib/utils/permissions.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Plus,
+    Search,
+    UserCog,
+    ToggleLeft,
+    X,
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    Users,
+    UserCircle,
+    CheckCircle2,
+    XCircle,
+    Pencil,
+    UserX,
+    UserCheck,
+  } from 'lucide-svelte';
+
   let search = '';
   let roleFilter = '';
   let statusFilter = '';
@@ -141,7 +160,7 @@
         <p class="page-subtitle">Gerencie usuários e permissões do sistema</p>
       </div>
       <button class="btn-primary" on:click={() => goto('/usuarios/cadastro')}>
-        <i class="fas fa-plus"></i>
+        <Plus size={18} />
         Novo Usuário
       </button>
     </div>
@@ -150,11 +169,11 @@
   <!-- Filters -->
   <div class="filters-card">
     <div class="search-wrapper">
-      <i class="fas fa-search search-icon"></i>
+      <Search size={18} class="search-icon" />
       <input 
         type="text" 
         class="search-input"
-        placeholder="Buscar por nome ou e-mail..." 
+        placeholder="Digite o nome completo ou endereço de e-mail do usuário..." 
         bind:value={search} 
       />
     </div>
@@ -162,7 +181,7 @@
     <div class="filters-row">
       <div class="filter-item">
         <label for="roleFilter">
-          <i class="fas fa-user-tag"></i>
+          <UserCog size={16} />
           Perfil
         </label>
         <select id="roleFilter" bind:value={roleFilter} class="filter-select">
@@ -175,7 +194,7 @@
 
       <div class="filter-item">
         <label for="statusFilter">
-          <i class="fas fa-toggle-on"></i>
+          <ToggleLeft size={16} />
           Status
         </label>
         <select id="statusFilter" bind:value={statusFilter} class="filter-select">
@@ -187,7 +206,7 @@
 
       {#if search || roleFilter || statusFilter}
         <button class="btn-clear-filters" on:click={() => { search = ''; roleFilter = ''; statusFilter = ''; }}>
-          <i class="fas fa-times"></i>
+          <X size={16} />
           Limpar Filtros
         </button>
       {/if}
@@ -198,19 +217,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando usuários...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -219,7 +238,7 @@
     <div class="users-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-users"></i>
+          <Users size={20} />
           Usuários ({filteredUsers.length})
         </h2>
       </div>
@@ -228,7 +247,7 @@
         {#each filteredUsers as u}
           <div class="user-card">
             <div class="user-avatar">
-              <i class="fas fa-user-circle"></i>
+              <UserCircle size={48} color="#64748b" />
             </div>
             
             <div class="user-info">
@@ -237,11 +256,15 @@
               
               <div class="user-meta">
                 <span class="role-badge {getRoleClass(u.role)}">
-                  <i class="fas fa-user-tag"></i>
+                  <UserCog size={14} />
                   {getRoleLabel(u.role)}
                 </span>
                 <span class="status-badge {u.isActive ? 'status-active' : 'status-inactive'}">
-                  <i class="fas fa-{u.isActive ? 'check-circle' : 'times-circle'}"></i>
+                  {#if u.isActive}
+                    <CheckCircle2 size={14} />
+                  {:else}
+                    <XCircle size={14} />
+                  {/if}
                   {u.isActive ? 'Ativo' : 'Inativo'}
                 </span>
               </div>
@@ -253,7 +276,7 @@
                 on:click={() => editarUsuario(u)}
                 title="Editar usuário"
               >
-                <i class="fas fa-edit"></i>
+                <Pencil size={16} />
                 Editar
               </button>
               {#if u.isActive}
@@ -262,7 +285,7 @@
                   on:click={() => deletarUsuario(u)}
                   title="Desativar usuário"
                 >
-                  <i class="fas fa-user-slash"></i>
+                  <UserX size={16} />
                   Desativar
                 </button>
               {:else}
@@ -271,7 +294,7 @@
                   on:click={() => reativarUsuario(u)}
                   title="Reativar usuário"
                 >
-                  <i class="fas fa-user-check"></i>
+                  <UserCheck size={16} />
                   Reativar
                 </button>
               {/if}
@@ -283,16 +306,74 @@
   {:else}
     <div class="empty-state">
       <div class="empty-icon">
-        <i class="fas fa-users"></i>
+        <Users size={32} color="#94a3b8" />
       </div>
       <h3>Nenhum usuário encontrado</h3>
       <p>{search || roleFilter || statusFilter ? 'Tente ajustar os filtros de busca.' : 'Comece criando um novo usuário.'}</p>
       {#if !search && !roleFilter && !statusFilter}
         <button class="btn-primary" on:click={() => goto('/usuarios/cadastro')}>
-          <i class="fas fa-plus"></i>
+          <Plus size={18} />
           Criar Primeiro Usuário
         </button>
       {/if}
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Ajustes para ícones em labels */
+  label svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-primary svg,
+  .btn-secondary svg,
+  .btn-retry svg,
+  .btn-clear-filters svg,
+  .action-btn svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para role-badge e status-badge */
+  .role-badge,
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  /* Ajustes para user-avatar */
+  .user-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>

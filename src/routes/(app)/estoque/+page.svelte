@@ -8,6 +8,30 @@
 
   import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Plus,
+    List,
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    Search,
+    Filter,
+    Tag,
+    X,
+    Boxes,
+    DollarSign,
+    TriangleAlert,
+    Package,
+    PackageOpen,
+    ArrowRight,
+    ArrowDown,
+    ArrowUp,
+    Calendar,
+    User,
+    MessageSquare,
+  } from 'lucide-svelte';
+
   let loading = true;
   let error = '';
   let pecas = [];
@@ -105,12 +129,12 @@
       <div class="header-actions">
         {#if isSupervisorOrAdmin(user?.role)}
           <button class="btn-primary" on:click={() => goto('/estoque/cadastro')}>
-            <i class="fas fa-plus"></i>
+            <Plus size={18} />
             Nova Peça
           </button>
         {/if}
         <button class="btn-secondary" on:click={() => goto('/estoque/movimentacoes')}>
-          <i class="fas fa-list"></i>
+          <List size={18} />
           Movimentações
         </button>
       </div>
@@ -121,19 +145,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando dados do estoque...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -142,7 +166,7 @@
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-icon total">
-          <i class="fas fa-boxes"></i>
+          <Boxes size={28} color="white" />
         </div>
         <div class="metric-content">
           <h3 class="metric-label">Total de Itens</h3>
@@ -154,7 +178,7 @@
       {#if isSupervisorOrAdmin(user?.role)}
         <div class="metric-card value" data-full-value="Valor Total: {moedaBR(totalValor)}" title="Valor Total: {moedaBR(totalValor)}">
           <div class="metric-icon money">
-            <i class="fas fa-dollar-sign"></i>
+            <DollarSign size={28} color="white" />
           </div>
           <div class="metric-content">
             <h3 class="metric-label">Valor Total</h3>
@@ -165,7 +189,7 @@
 
         <div class="metric-card warning">
           <div class="metric-icon alert">
-            <i class="fas fa-exclamation-triangle"></i>
+            <TriangleAlert size={26} color="white" />
           </div>
           <div class="metric-content">
             <h3 class="metric-label">Baixo Estoque</h3>
@@ -176,7 +200,7 @@
 
         <div class="metric-card critical">
           <div class="metric-icon danger">
-            <i class="fas fa-exclamation-circle"></i>
+            <AlertCircle size={26} color="white" />
           </div>
           <div class="metric-content">
             <h3 class="metric-label">Críticos</h3>
@@ -190,11 +214,11 @@
     <!-- Filters -->
     <div class="filters-card">
       <div class="search-wrapper">
-        <i class="fas fa-search search-icon"></i>
+        <Search size={18} class="search-icon" />
         <input 
           type="text" 
           class="search-input"
-          placeholder="Buscar por código ou nome..." 
+          placeholder="Digite o código da peça ou nome do item..." 
           bind:value={busca} 
         />
       </div>
@@ -202,7 +226,7 @@
       <div class="filters-row">
         <div class="filter-item">
           <label for="filtroStatus">
-            <i class="fas fa-filter"></i>
+            <Filter size={16} />
             Status
           </label>
           <select id="filtroStatus" bind:value={filtroStatus} class="filter-select">
@@ -215,7 +239,7 @@
 
         <div class="filter-item">
           <label for="filtroCategoria">
-            <i class="fas fa-tag"></i>
+            <Tag size={16} />
             Categoria / Nome
           </label>
           <input 
@@ -229,7 +253,7 @@
 
         {#if busca || filtroStatus || filtroCategoria}
           <button class="btn-clear-filters" on:click={() => { busca = ''; filtroStatus = ''; filtroCategoria = ''; }}>
-            <i class="fas fa-times"></i>
+            <X size={16} />
             Limpar Filtros
           </button>
         {/if}
@@ -240,7 +264,7 @@
     <div class="stock-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-boxes"></i>
+          <Boxes size={20} />
           Peças em Estoque ({pecasFiltradas.length})
         </h2>
       </div>
@@ -250,7 +274,7 @@
           {#each pecasFiltradas as p}
             <div class="stock-item {getStatusClass(p.status)}">
               <div class="stock-icon">
-                <i class="fas fa-box"></i>
+                <Package size={22} color="white" />
               </div>
               <div class="stock-info">
                 <div class="stock-header">
@@ -283,7 +307,7 @@
       {:else}
         <div class="empty-state">
           <div class="empty-icon">
-            <i class="fas fa-box-open"></i>
+            <PackageOpen size={32} color="#94a3b8" />
           </div>
           <h3>Nenhuma peça encontrada</h3>
           <p>{busca || filtroStatus || filtroCategoria ? 'Tente ajustar os filtros de busca.' : 'Comece cadastrando uma nova peça.'}</p>
@@ -296,12 +320,12 @@
       <div class="movements-card">
         <div class="card-header">
           <h2 class="card-title">
-            <i class="fas fa-exchange-alt"></i>
+            <ArrowDown size={20} />
             Últimas Movimentações
           </h2>
           <a href="/estoque/movimentacoes" class="section-link">
             Ver todas
-            <i class="fas fa-arrow-right"></i>
+            <ArrowRight size={18} />
           </a>
         </div>
 
@@ -309,22 +333,26 @@
           {#each movimentacoes.slice(0, 10) as m}
             <div class="movement-item">
               <div class="movement-icon {m.type.toLowerCase()}">
-                <i class="fas fa-{m.type === 'ENTRY' ? 'arrow-down' : 'arrow-up'}"></i>
+                {#if m.type === 'ENTRY'}
+                  <ArrowDown size={22} color={m.type === 'ENTRY' ? '#059669' : '#dc2626'} />
+                {:else}
+                  <ArrowUp size={22} color={m.type === 'ENTRY' ? '#059669' : '#dc2626'} />
+                {/if}
               </div>
               <div class="movement-info">
                 <h4 class="movement-piece">{m.piece?.name || 'N/A'}</h4>
                 <div class="movement-meta">
                   <span class="meta-item">
-                    <i class="fas fa-calendar"></i>
+                    <Calendar size={14} />
                     {dataBR(m.movedAt)}
                   </span>
                   <span class="meta-item">
-                    <i class="fas fa-user"></i>
+                    <User size={14} />
                     {m.user?.name || 'N/A'}
                   </span>
                   {#if m.notes}
                     <span class="meta-item">
-                      <i class="fas fa-comment"></i>
+                      <MessageSquare size={14} />
                       {m.notes}
                     </span>
                   {/if}
@@ -343,3 +371,56 @@
     {/if}
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Ajustes para ícones em labels */
+  label svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-primary svg,
+  .btn-secondary svg,
+  .btn-retry svg,
+  .btn-clear-filters svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para meta-items */
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .meta-item svg {
+    flex-shrink: 0;
+  }
+</style>

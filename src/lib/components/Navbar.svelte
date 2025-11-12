@@ -1,64 +1,76 @@
 <script>
   import { page } from '$app/stores';
+  import { 
+    Menu, 
+    Bell, 
+    Home, 
+    ClipboardList, 
+    Users, 
+    UserPlus, 
+    Cog, 
+    Settings, 
+    Package, 
+    Boxes, 
+    FileText, 
+    ChartBar, 
+    Calendar, 
+    CalendarPlus, 
+    History, 
+    PlusCircle, 
+    AlertTriangle 
+  } from "lucide-svelte";
 
+  // Função para alternar o sidebar
   function toggleSidebar() {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('sidebar-toggle'));
     }
   }
 
-  // Breadcrumb mapping - mais completo e ordenado por prioridade (rotas mais específicas primeiro)
+  // Mapa de breadcrumbs com ícones Lucide (SVG vetoriais)
   const breadcrumbMap = [
-    // Rotas filhas específicas (devem vir antes das rotas pai)
-    { path: '/ordens/cadastro', label: 'Nova Ordem', icon: 'fas fa-plus-circle' },
-    { path: '/ordens/', label: 'Ordens de Serviço', icon: 'fas fa-tasks' },
-    { path: '/usuarios/cadastro', label: 'Novo Usuário', icon: 'fas fa-user-plus' },
-    { path: '/usuarios/', label: 'Usuários', icon: 'fas fa-users' },
-    { path: '/equipamentos/cadastro', label: 'Novo Equipamento', icon: 'fas fa-cog' },
-    { path: '/equipamentos/', label: 'Equipamentos', icon: 'fas fa-cogs' },
-    { path: '/estoque/cadastro', label: 'Nova Peça', icon: 'fas fa-box' },
-    { path: '/estoque/movimentacoes', label: 'Movimentações', icon: 'fas fa-exchange-alt' },
-    { path: '/estoque/', label: 'Estoque', icon: 'fas fa-boxes' },
-    { path: '/agendamentos/nova', label: 'Novo Agendamento', icon: 'fas fa-calendar-plus' },
-    { path: '/agendamentos/', label: 'Agendamentos', icon: 'fas fa-calendar-alt' },
+    // Rotas filhas específicas
+    { path: '/ordens/cadastro', label: 'Nova Ordem', icon: PlusCircle },
+    { path: '/ordens/', label: 'Ordens de Serviço', icon: ClipboardList },
+    { path: '/usuarios/cadastro', label: 'Novo Usuário', icon: UserPlus },
+    { path: '/usuarios/', label: 'Usuários', icon: Users },
+    { path: '/equipamentos/cadastro', label: 'Novo Equipamento', icon: Cog },
+    { path: '/equipamentos/', label: 'Equipamentos', icon: Cog },
+    { path: '/estoque/cadastro', label: 'Nova Peça', icon: Package },
+    { path: '/estoque/movimentacoes', label: 'Movimentações', icon: Boxes },
+    { path: '/estoque/', label: 'Estoque', icon: Boxes },
+    { path: '/agendamentos/nova', label: 'Novo Agendamento', icon: CalendarPlus },
+    { path: '/agendamentos/', label: 'Agendamentos', icon: Calendar },
+
     // Rotas principais
-    { path: '/dashboard', label: 'Dashboard', icon: 'fas fa-home' },
-    { path: '/ordens', label: 'Ordens de Serviço', icon: 'fas fa-tasks' },
-    { path: '/usuarios', label: 'Usuários', icon: 'fas fa-users' },
-    { path: '/equipamentos', label: 'Equipamentos', icon: 'fas fa-cogs' },
-    { path: '/estoque', label: 'Estoque', icon: 'fas fa-boxes' },
-    { path: '/relatorios', label: 'Relatórios', icon: 'fas fa-chart-bar' },
-    { path: '/historico', label: 'Histórico', icon: 'fas fa-history' },
-    { path: '/notificacoes', label: 'Notificações', icon: 'fas fa-bell' },
-    { path: '/agendamentos', label: 'Agendamentos', icon: 'fas fa-calendar-alt' },
-    { path: '/configuracoes', label: 'Configurações', icon: 'fas fa-gear' },
-    { path: '/logs', label: 'Logs de Auditoria', icon: 'fas fa-file-alt' }
+    { path: '/dashboard', label: 'Dashboard', icon: Home },
+    { path: '/ordens', label: 'Ordens de Serviço', icon: ClipboardList },
+    { path: '/usuarios', label: 'Usuários', icon: Users },
+    { path: '/equipamentos', label: 'Equipamentos', icon: Cog },
+    { path: '/estoque', label: 'Estoque', icon: Boxes },
+    { path: '/relatorios', label: 'Relatórios', icon: ChartBar },
+    { path: '/historico', label: 'Histórico', icon: History },
+    { path: '/notificacoes', label: 'Notificações', icon: Bell },
+    { path: '/agendamentos', label: 'Agendamentos', icon: Calendar },
+    { path: '/configuracoes', label: 'Configurações', icon: Settings },
+    { path: '/logs', label: 'Logs de Auditoria', icon: FileText }
   ];
 
-  // Computed reativo - depende diretamente de $page.url.pathname
+  // Caminho atual reativo
   $: currentPath = $page.url.pathname;
-  
+
+  // Breadcrumb atual
   $: currentBreadcrumb = (() => {
     const path = currentPath || '/';
-    
-    // Busca exata primeiro (sem trailing slash)
     for (const item of breadcrumbMap) {
-      const itemPath = item.path.replace(/\/$/, ''); // Remove trailing slash
-      if (path === itemPath || path === item.path) {
-        return item;
-      }
+      const itemPath = item.path.replace(/\/$/, '');
+      if (path === itemPath || path === item.path) return item;
     }
-    
-    // Busca por prefixo (para rotas filhas) - precisa ter trailing slash ou ser seguido por /
     for (const item of breadcrumbMap) {
-      const itemPath = item.path.replace(/\/$/, ''); // Remove trailing slash
-      if (path.startsWith(itemPath + '/')) {
-        return item;
-      }
+      const itemPath = item.path.replace(/\/$/, '');
+      if (path.startsWith(itemPath + '/')) return item;
     }
-    
-    // Fallback
-    return { label: 'Página', icon: 'fas fa-file' };
+    return { label: 'Página', icon: AlertTriangle };
   })();
 </script>
 
@@ -71,12 +83,12 @@
         aria-label="Abrir menu"
         title="Menu"
       >
-        <i class="fas fa-bars"></i>
+        <Menu size={22} />
       </button>
       
       <div class="page-title-wrapper">
         <div class="page-icon">
-          <i class={currentBreadcrumb.icon}></i>
+          <svelte:component this={currentBreadcrumb.icon} size={20} color="white" />
         </div>
         <div class="page-title-content">
           <h1 class="page-title">{currentBreadcrumb.label}</h1>
@@ -92,7 +104,7 @@
         title="Notificações"
         aria-label="Notificações"
       >
-        <i class="fas fa-bell"></i>
+        <Bell size={20} />
         <span class="notification-badge">0</span>
       </a>
     </div>
@@ -101,19 +113,17 @@
 
 <style>
   /* ===========================
-     NAVBAR PROFISSIONAL
+     NAVBAR PROFISSIONAL COM ÍCONES SVG
   =========================== */
   .navbar {
     width: 100%;
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border-bottom: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     position: sticky;
     top: 0;
     z-index: 50;
-    padding: 0;
     backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.95);
   }
 
   .navbar-content {
@@ -121,7 +131,6 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
-    max-width: 100%;
     min-height: 64px;
   }
 
@@ -145,8 +154,6 @@
     transition: all 0.2s ease;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
-    flex-shrink: 0;
   }
 
   .sidebar-toggle:hover {
@@ -164,7 +171,6 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    min-width: 0;
   }
 
   .page-icon {
@@ -175,9 +181,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-size: 1.25rem;
-    flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
   }
 
@@ -185,7 +188,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
-    min-width: 0;
   }
 
   .page-title {
@@ -194,10 +196,6 @@
     color: #1e293b;
     margin: 0;
     line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: -0.3px;
   }
 
   .page-subtitle {
@@ -206,7 +204,6 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    line-height: 1;
   }
 
   /* Right Section */
@@ -214,13 +211,6 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    flex-shrink: 0;
-  }
-
-  .navbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
   }
 
   .action-btn {
@@ -228,7 +218,6 @@
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    border: none;
     background: #f8fafc;
     color: #64748b;
     display: flex;
@@ -237,8 +226,6 @@
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
-    font-size: 1.1rem;
-    flex-shrink: 0;
   }
 
   .action-btn:hover {
@@ -246,10 +233,6 @@
     color: #3b82f6;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-  }
-
-  .action-btn:active {
-    transform: translateY(0);
   }
 
   .notification-badge {
@@ -262,11 +245,20 @@
     font-weight: 700;
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
+    border: 2px solid white;
     min-width: 20px;
     text-align: center;
-    line-height: 1;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
-    border: 2px solid white;
+  }
+
+  /* SVG refinado */
+  svg {
+    stroke-width: 2;
+    transition: transform 0.2s ease;
+  }
+
+  .action-btn:hover svg,
+  .sidebar-toggle:hover svg {
+    transform: scale(1.1);
   }
 
   /* Responsive */
@@ -286,14 +278,9 @@
       min-height: 56px;
     }
 
-    .page-title-wrapper {
-      gap: 0.75rem;
-    }
-
     .page-icon {
       width: 40px;
       height: 40px;
-      font-size: 1.1rem;
     }
 
     .page-title {

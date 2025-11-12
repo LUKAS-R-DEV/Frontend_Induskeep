@@ -7,6 +7,20 @@
   import { hasPermission } from '$lib/utils/permissions.js';
   import { goto } from '$app/navigation';
 
+  // ✅ Ícones Lucide
+  import {
+    FileText,
+    Search,
+    Factory,
+    Calendar,
+    X,
+    Loader2,
+    History,
+    CheckCircle2,
+    Clock,
+    User,
+  } from 'lucide-svelte';
+
   let loading = true;
   let busca = '';
   let filtroEquipamento = '';
@@ -158,7 +172,7 @@
         <p class="page-subtitle">Visualize todas as manutenções concluídas</p>
       </div>
       <button class="btn-primary" on:click={exportarGeral}>
-        <i class="fas fa-file-pdf"></i>
+        <FileText size={18} />
         Exportar Relatório
       </button>
     </div>
@@ -167,11 +181,11 @@
   <!-- Filters -->
   <div class="filters-card">
     <div class="search-wrapper">
-      <i class="fas fa-search search-icon"></i>
+      <Search size={18} class="search-icon" />
       <input 
         type="text" 
         class="search-input"
-        placeholder="Buscar no histórico..." 
+        placeholder="Digite o título da manutenção, equipamento ou técnico..." 
         bind:value={busca}
       />
     </div>
@@ -179,7 +193,7 @@
     <div class="filters-row">
       <div class="filter-item">
         <label for="filtroEquipamento">
-          <i class="fas fa-industry"></i>
+          <Factory size={16} />
           Equipamento
         </label>
         <input 
@@ -193,7 +207,7 @@
 
       <div class="filter-item">
         <label for="dataDe">
-          <i class="fas fa-calendar"></i>
+          <Calendar size={16} />
           De
         </label>
         <input 
@@ -206,7 +220,7 @@
 
       <div class="filter-item">
         <label for="dataAte">
-          <i class="fas fa-calendar"></i>
+          <Calendar size={16} />
           Até
         </label>
         <input 
@@ -219,7 +233,7 @@
 
       {#if busca || filtroEquipamento || dataDe || dataAte}
         <button class="btn-clear-filters" on:click={limparFiltros}>
-          <i class="fas fa-times"></i>
+          <X size={16} />
           Limpar Filtros
         </button>
       {/if}
@@ -230,14 +244,14 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando histórico...</p>
     </div>
   {:else if filtrado.length === 0}
     <div class="empty-state">
       <div class="empty-icon">
-        <i class="fas fa-history"></i>
+        <History size={32} color="#94a3b8" />
       </div>
       <h3>Nenhum registro encontrado</h3>
       <p>{busca || filtroEquipamento || dataDe || dataAte ? 'Tente ajustar os filtros de busca.' : 'Ainda não há histórico de manutenções.'}</p>
@@ -247,7 +261,7 @@
     <div class="history-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-history"></i>
+          <History size={20} />
           Histórico ({filtrado.length})
         </h2>
       </div>
@@ -256,7 +270,7 @@
         {#each filtrado as h}
           <div class="history-item">
             <div class="history-icon">
-              <i class="fas fa-check-circle"></i>
+              <CheckCircle2 size={24} color="#10b981" />
             </div>
             <div class="history-content">
               <div class="history-header">
@@ -267,19 +281,19 @@
               </div>
               <div class="history-meta">
                 <div class="meta-item">
-                  <i class="fas fa-industry"></i>
+                  <Factory size={14} />
                   <span>{h.order?.machine?.name || 'N/A'}</span>
                 </div>
                 <div class="meta-item">
-                  <i class="fas fa-user"></i>
+                  <User size={14} />
                   <span>{h.order?.user?.name || 'N/A'}</span>
                 </div>
                 <div class="meta-item">
-                  <i class="fas fa-calendar"></i>
+                  <Calendar size={14} />
                   <span>{formatDate(h.completedAt)}</span>
                 </div>
                 <div class="meta-item">
-                  <i class="fas fa-clock"></i>
+                  <Clock size={14} />
                   <span>{duration(h.order?.createdAt, h.completedAt)}</span>
                 </div>
               </div>
@@ -293,3 +307,54 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Ajustes para ícones em labels */
+  label svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Ajustes para ícones em botões */
+  .btn-primary svg,
+  .btn-clear-filters svg {
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para meta-items */
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .meta-item svg {
+    flex-shrink: 0;
+  }
+</style>

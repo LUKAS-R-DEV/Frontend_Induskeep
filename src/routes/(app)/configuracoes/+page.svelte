@@ -5,6 +5,20 @@
   import { feedback } from '$lib/stores/feedback.stores.js';
   import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
 
+  // ✅ Ícones Lucide
+  import {
+    Loader2,
+    Lock,
+    Cog,
+    Package,
+    Bell,
+    Wrench,
+    Mail,
+    AlertCircle,
+    CheckCircle2,
+    Save,
+  } from 'lucide-svelte';
+
   let loading = true;
   let saving = false;
   let error = "";
@@ -210,14 +224,14 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando configurações...</p>
     </div>
   {:else if error && !isSupervisorOrAdmin(user?.role)}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-lock"></i>
+        <Lock size={36} color="#ef4444" />
       </div>
       <h3>Acesso Negado</h3>
       <p>{error}</p>
@@ -227,7 +241,7 @@
     <div class="settings-card">
       <div class="card-header">
         <h2 class="card-title">
-          <i class="fas fa-cog"></i>
+          <Cog size={20} />
           Parâmetros Gerais
         </h2>
       </div>
@@ -237,7 +251,7 @@
         <div class="form-section">
           <div class="section-header">
             <h3 class="section-title">
-              <i class="fas fa-box"></i>
+              <Package size={18} />
               Estoque
             </h3>
           </div>
@@ -266,7 +280,7 @@
                 class="checkbox-input"
               />
               <label for="autoNotify" class="checkbox-label">
-                <i class="fas fa-bell"></i>
+                <Bell size={16} />
                 Notificar automaticamente quando estoque estiver baixo
               </label>
             </div>
@@ -278,7 +292,7 @@
         <div class="form-section">
           <div class="section-header">
             <h3 class="section-title">
-              <i class="fas fa-tools"></i>
+              <Wrench size={18} />
               Manutenção
             </h3>
           </div>
@@ -319,7 +333,7 @@
         <div class="form-section">
           <div class="section-header">
             <h3 class="section-title">
-              <i class="fas fa-envelope"></i>
+              <Mail size={18} />
               Notificações
             </h3>
           </div>
@@ -341,14 +355,14 @@
         <!-- Messages -->
         {#if error}
           <div class="form-message error">
-            <i class="fas fa-exclamation-circle"></i>
+            <AlertCircle size={18} />
             <span>{error}</span>
           </div>
         {/if}
 
         {#if success}
           <div class="form-message success">
-            <i class="fas fa-check-circle"></i>
+            <CheckCircle2 size={18} />
             <span>Configurações salvas com sucesso!</span>
           </div>
         {/if}
@@ -357,10 +371,10 @@
         <div class="form-actions">
           <button type="submit" class="btn-primary" disabled={saving || loading}>
             {#if saving}
-              <i class="fas fa-spinner fa-spin"></i>
+              <Loader2 class="spin" size={18} />
               <span>Salvando...</span>
             {:else}
-              <i class="fas fa-save"></i>
+              <Save size={18} />
               <span>Salvar Configurações</span>
             {/if}
           </button>
@@ -369,3 +383,48 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  /* Ajustes para section-title */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para card-title */
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para checkbox-label */
+  .checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para form-message */
+  .form-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Ajustes para botões */
+  .btn-primary svg {
+    flex-shrink: 0;
+  }
+</style>

@@ -1,9 +1,25 @@
 <script>
-  import {onMount} from 'svelte';
-  import {DashboardApi} from '$lib/api/dashboard.js';
+  import { onMount } from 'svelte';
+  import { DashboardApi } from '$lib/api/dashboard.js';
   import '$lib/styles/dashboard.css';
   import { goto } from '$app/navigation';
   import { hasPermission, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
+
+  // ✅ Ícones Lucide
+  import {
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    Factory,
+    Clock,
+    CheckCircle2,
+    TriangleAlert,
+    ClipboardList,
+    User,
+    Box,
+    ArrowRight,
+    Plus,
+  } from 'lucide-svelte';
 
   let data = null;
   let error = '';
@@ -12,14 +28,10 @@
 
   onMount(async () => {
     try {
-      // Carrega usuário do localStorage
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem('user');
-        if (stored) {
-          user = JSON.parse(stored);
-        }
+        if (stored) user = JSON.parse(stored);
       }
-      
       data = await DashboardApi.getData();
     } catch (e) {
       error = e.message;
@@ -34,46 +46,30 @@
 
   function getStatusClass(status) {
     if (!status) return '';
-    const statusUpper = status.toUpperCase();
-    switch (statusUpper) {
-      case 'PENDING':
-        return 'status-pending';
-      case 'IN_PROGRESS':
-        return 'status-progress';
-      case 'COMPLETED':
-        return 'status-completed';
-      case 'CANCELLED':
-      case 'CANCELED':
-        return 'status-cancelled';
-      default:
-        return '';
-    }
+    const s = status.toUpperCase();
+    return {
+      PENDING: 'status-pending',
+      IN_PROGRESS: 'status-progress',
+      COMPLETED: 'status-completed',
+      CANCELLED: 'status-cancelled',
+      CANCELED: 'status-cancelled'
+    }[s] || '';
   }
 
   function getStatusLabel(status) {
-    const statusUpper = status?.toUpperCase() || '';
-    switch (statusUpper) {
-      case 'COMPLETED':
-        return 'Concluída';
-      case 'CANCELLED':
-      case 'CANCELED':
-        return 'Cancelada';
-      case 'PENDING':
-        return 'Pendente';
-      case 'IN_PROGRESS':
-        return 'Em Andamento';
-      default:
-        return status || '-';
-    }
+    const s = status?.toUpperCase() || '';
+    return {
+      COMPLETED: 'Concluída',
+      CANCELLED: 'Cancelada',
+      CANCELED: 'Cancelada',
+      PENDING: 'Pendente',
+      IN_PROGRESS: 'Em Andamento'
+    }[s] || status || '-';
   }
 
   function formatDate(date) {
     if (!date) return '';
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    return new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 </script>
 
@@ -81,19 +77,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando dados do painel...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -113,7 +109,7 @@
       {#if isSupervisorOrAdmin(user?.role)}
         <div class="metric-card">
           <div class="metric-icon equipment">
-            <i class="fas fa-industry"></i>
+            <Factory size={28} color="white" />
           </div>
           <div class="metric-content">
             <h3 class="metric-label">Equipamentos</h3>
@@ -125,7 +121,7 @@
 
       <div class="metric-card pending">
         <div class="metric-icon warning">
-          <i class="fas fa-clock"></i>
+          <Clock size={26} color="white" />
         </div>
         <div class="metric-content">
           <h3 class="metric-label">Pendentes</h3>
@@ -142,7 +138,7 @@
 
       <div class="metric-card completed">
         <div class="metric-icon success">
-          <i class="fas fa-check-circle"></i>
+          <CheckCircle2 size={26} color="white" />
         </div>
         <div class="metric-content">
           <h3 class="metric-label">Concluídas</h3>
@@ -160,7 +156,7 @@
       {#if isSupervisorOrAdmin(user?.role)}
         <div class="metric-card critical">
           <div class="metric-icon danger">
-            <i class="fas fa-exclamation-triangle"></i>
+            <TriangleAlert size={26} color="white" />
           </div>
           <div class="metric-content">
             <h3 class="metric-label">Estoque Crítico</h3>
@@ -172,11 +168,11 @@
     </div>
 
     <div class="dashboard-grid">
-      <!-- Últimas Ordens de Serviço -->
+      <!-- Últimas Ordens -->
       <div class="dashboard-section">
         <div class="section-header">
           <h2 class="section-title">
-            <i class="fas fa-tasks"></i>
+            <ClipboardList size={20} />
             {#if user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN'}
               Minhas Ordens de Serviço
             {:else}
@@ -185,7 +181,7 @@
           </h2>
           <a href="/ordens" class="section-link">
             Ver todas
-            <i class="fas fa-arrow-right"></i>
+            <ArrowRight size={18} />
           </a>
         </div>
 
@@ -198,11 +194,11 @@
                     <h4 class="order-title">{order.title}</h4>
                     <div class="order-meta">
                       <span class="order-meta-item">
-                        <i class="fas fa-industry"></i>
+                        <Factory size={14} />
                         {order.machine?.name || 'N/A'}
                       </span>
                       <span class="order-meta-item">
-                        <i class="fas fa-user"></i>
+                        <User size={14} />
                         {order.user?.name || 'N/A'}
                       </span>
                     </div>
@@ -221,13 +217,13 @@
           {:else}
             <div class="empty-state">
               <div class="empty-icon">
-                <i class="fas fa-clipboard-list"></i>
+                <ClipboardList size={32} color="#94a3b8" />
               </div>
               <h3>Nenhuma ordem encontrada</h3>
               <p>{canCreate() ? 'Comece criando uma nova ordem de serviço' : 'Nenhuma ordem de serviço disponível no momento'}</p>
               {#if canCreate()}
                 <button class="btn-secondary" on:click={() => goto('/ordens/cadastro')}>
-                  <i class="fas fa-plus"></i>
+                  <Plus size={18} />
                   Criar Ordem
                 </button>
               {/if}
@@ -241,12 +237,12 @@
         <div class="dashboard-section">
           <div class="section-header">
             <h2 class="section-title">
-              <i class="fas fa-exclamation-triangle"></i>
+              <TriangleAlert size={20} color="#f87171" />
               Estoque Crítico
             </h2>
             <a href="/estoque" class="section-link">
               Ver estoque
-              <i class="fas fa-arrow-right"></i>
+              <ArrowRight size={18} />
             </a>
           </div>
 
@@ -256,7 +252,7 @@
                 {#each data.lowStockPieces.slice(0, 5) as piece}
                   <div class="stock-item">
                     <div class="stock-icon danger">
-                      <i class="fas fa-box"></i>
+                      <Box size={22} color="white" />
                     </div>
                     <div class="stock-info">
                       <h4 class="stock-name">{piece.name}</h4>
@@ -272,7 +268,7 @@
             {:else}
               <div class="empty-state">
                 <div class="empty-icon success">
-                  <i class="fas fa-check-circle"></i>
+                  <CheckCircle2 size={28} color="#22c55e" />
                 </div>
                 <h3>Estoque em dia</h3>
                 <p>Todas as peças estão com estoque adequado</p>
@@ -284,3 +280,14 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  /* Ícones SVG refinados */
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+  }
+</style>
