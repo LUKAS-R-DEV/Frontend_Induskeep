@@ -56,6 +56,20 @@
       return;
     }
 
+    // Valida se a data não é do passado
+    const selectedDate = new Date(form.date);
+    const now = new Date();
+    if (selectedDate < now) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Data inválida',
+        message: 'Não é possível agendar para uma data/hora no passado.',
+      });
+      loading = false;
+      return;
+    }
+
     try {
       const isoDate = new Date(form.date).toISOString();
       await ScheduleApi.create({...form, date: isoDate});
@@ -113,6 +127,20 @@
 
   $: selectedMachine = machines.find(m => m.id === form.machineId);
   $: selectedUser = users.find(u => u.id === form.userId);
+
+  // Calcula a data mínima (agora) no formato datetime-local (YYYY-MM-DDTHH:mm)
+  function getMinDateTime() {
+    const now = new Date();
+    // Ajusta para o fuso horário local
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  $: minDateTime = getMinDateTime();
 </script>
 
 <div class="form-container">
@@ -223,6 +251,7 @@
             id="date"
             type="datetime-local"
             bind:value={form.date}
+            min={minDateTime}
             required
             class="form-input"
             disabled={loading}
@@ -231,7 +260,7 @@
             {#if form.date}
               Agendado para: <strong>{formatDate(form.date)}</strong>
             {:else}
-              Selecione a data e hora do agendamento
+              Selecione a data e hora do agendamento (apenas datas futuras são permitidas)
             {/if}
           </small>
         </div>

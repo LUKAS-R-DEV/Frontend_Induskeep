@@ -6,7 +6,7 @@
   import { StockApi } from '$lib/api/stock';
   import { SettingsApi } from '$lib/api/settings';
 
-  import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
+  import { isAdmin, isSupervisorOrAdmin, hasPermission, isTechnician } from '$lib/utils/permissions.js';
 
   // ✅ Ícones Lucide
   import {
@@ -49,13 +49,34 @@
         user = JSON.parse(stored);
       }
 
-      const [settings, pieces, movements] = await Promise.all([
-        SettingsApi.get(),
-        PieceApi.list(),
-        StockApi.listMovements(),
-      ]);
+      // Busca settings apenas se o usuário tiver permissão MANAGE_SETTINGS
+      const canManageSettings = user?.role && hasPermission(user.role, 'MANAGE_SETTINGS');
+      const isTech = isTechnician(user?.role);
+      
+      const promises = [PieceApi.list()];
 
-      minStockThreshold = settings?.minStockThreshold ?? 5;
+      // Técnicos não precisam ver movimentações na página principal
+      if (!isTech) {
+        promises.push(StockApi.listMovements());
+      }
+
+      // Adiciona a busca de settings apenas se o usuário tiver permissão
+      if (canManageSettings) {
+        promises.unshift(SettingsApi.get());
+      }
+
+      const results = await Promise.all(promises);
+      
+      // Se settings foi buscado, está no primeiro resultado
+      if (canManageSettings) {
+        const settings = results[0];
+        minStockThreshold = settings?.minStockThreshold ?? 5;
+        // Remove settings dos resultados
+        results.shift();
+      }
+
+      const pieces = results[0];
+      const movements = isTech ? [] : (results[1] || []);
 
       pecas = (pieces || []).map((p) => ({
         id: p.id,
@@ -124,7 +145,13 @@
     <div class="header-content">
       <div>
         <h1 class="page-title">Estoque</h1>
-        <p class="page-subtitle">Gerencie peças e movimentações do estoque</p>
+        <p class="page-subtitle">
+          {#if isTechnician(user?.role)}
+            Visualize as peças disponíveis no estoque
+          {:else}
+            Gerencie peças e movimentações do estoque
+          {/if}
+        </p>
       </div>
       <div class="header-actions">
         {#if isSupervisorOrAdmin(user?.role)}
@@ -286,14 +313,16 @@
                     <span class="detail-label">Quantidade:</span>
                     <span class="detail-value {p.status}">{p.quantidade}</span>
                   </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Mínimo:</span>
-                    <span class="detail-value">{p.minimo}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Valor Unit.:</span>
-                    <span class="detail-value">{moedaBR(p.valorUnit)}</span>
-                  </div>
+                  {#if !isTechnician(user?.role)}
+                    <div class="detail-item">
+                      <span class="detail-label">Mínimo:</span>
+                      <span class="detail-value">{p.minimo}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Valor Unit.:</span>
+                      <span class="detail-value">{moedaBR(p.valorUnit)}</span>
+                    </div>
+                  {/if}
                 </div>
               </div>
               <div class="stock-status">
@@ -315,8 +344,8 @@
       {/if}
     </div>
 
-    <!-- Recent Movements -->
-    {#if movimentacoes.length > 0}
+    <!-- Recent Movements - Apenas para supervisores e admins -->
+    {#if !isTechnician(user?.role) && movimentacoes.length > 0}
       <div class="movements-card">
         <div class="card-header">
           <h2 class="card-title">

@@ -19,6 +19,7 @@
     CheckCircle2,
     Clock,
     User,
+    ExternalLink,
   } from 'lucide-svelte';
 
   let loading = true;
@@ -169,7 +170,13 @@
     <div class="header-content">
       <div>
         <h1 class="page-title">Histórico de Manutenções</h1>
-        <p class="page-subtitle">Visualize todas as manutenções concluídas</p>
+        <p class="page-subtitle">
+          {#if user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN'}
+            Visualize suas manutenções concluídas
+          {:else}
+            Visualize todas as manutenções concluídas
+          {/if}
+        </p>
       </div>
       <button class="btn-primary" on:click={exportarGeral}>
         <FileText size={18} />
@@ -268,7 +275,7 @@
 
       <div class="history-list">
         {#each filtrado as h}
-          <div class="history-item">
+          <div class="history-item" on:click={() => goto(`/ordens/${h.order?.id}`)} style="cursor: pointer;">
             <div class="history-icon">
               <CheckCircle2 size={24} color="#10b981" />
             </div>
@@ -300,6 +307,12 @@
               {#if h.notes}
                 <p class="history-notes">{h.notes}</p>
               {/if}
+              <div class="history-footer">
+                <span class="view-details-link">
+                  <ExternalLink size={14} />
+                  Clique para ver detalhes
+                </span>
+              </div>
             </div>
           </div>
         {/each}

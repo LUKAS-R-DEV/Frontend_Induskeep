@@ -24,9 +24,7 @@ export async function apiFetch(path, options = {}) {
     ...options,
   };
 
-  if (import.meta.env.DEV) {
-    console.log(`📡 [API] ${fetchOptions.method} ${url}`, options.body || "");
-  }
+  // Log removido para não expor dados sensíveis
 
   // 💠 Início do loading global (exceto se `silent: true` ou `skipFeedback: true`)
   if (!options.silent && !options.skipFeedback) {
@@ -55,9 +53,7 @@ export async function apiFetch(path, options = {}) {
         (data && (data.error || data.message)) ||
         `Erro ${res.status}: ${res.statusText || "Erro desconhecido"}`;
 
-      if (import.meta.env.DEV) {
-        console.error("❌ [API Error]", message, { url, status: res.status, data });
-      }
+      // Log de erro sem dados sensíveis
 
       // 🔐 Tratamento especial para erro 401 (Token expirado/inválido)
       if (res.status === 401) {

@@ -8,7 +8,7 @@ export const RolePolicy = {
     "VIEW_PIECES",
     "CREATE_HISTORY",
     "VIEW_NOTIFICATIONS",
-    // Removido VIEW_HISTORY - apenas supervisor e admin podem ver histórico
+    "VIEW_HISTORY", // Técnicos podem ver apenas suas próprias ordens concluídas
     "UPDATE_ORDER",
     "CREATE_STOCK_EXIT",
   ],
@@ -57,7 +57,7 @@ export const RoutePermissions = {
   "/estoque/movimentacoes": ["CREATE_STOCK_EXIT", "ALL"], // Técnicos, Supervisores e Admin
   "/estoque/movimentacoes/nova": ["CREATE_STOCK_EXIT", "ALL"], // Técnicos, Supervisores e Admin
   "/relatorios": ["VIEW_REPORTS"],
-  "/historico": ["VIEW_HISTORY"], // Apenas supervisor e admin (técnico não tem VIEW_HISTORY)
+  "/historico": ["VIEW_HISTORY"], // Supervisor, admin e técnicos (técnicos veem apenas suas ordens)
   "/notificacoes": ["VIEW_NOTIFICATIONS"],
   "/agendamentos": ["CREATE_SCHEDULE", "VIEW_MACHINES"], // Supervisor ou Admin
   "/agendamentos/nova": ["CREATE_SCHEDULE"],
@@ -69,7 +69,6 @@ export const RoutePermissions = {
  */
 export function hasPermission(userRole, permission) {
   if (!userRole) {
-    console.log('❌ hasPermission: sem userRole', { userRole, permission });
     return false;
   }
   
@@ -77,15 +76,6 @@ export function hasPermission(userRole, permission) {
   const normalizedRole = String(userRole).toUpperCase().trim();
   
   const permissions = RolePolicy[normalizedRole] || [];
-  
-  console.log('🔍 hasPermission:', { 
-    userRole, 
-    normalizedRole, 
-    permission, 
-    permissions, 
-    hasAll: permissions.includes("ALL"),
-    hasPermission: permissions.includes(permission)
-  });
   
   // ADMIN tem acesso total
   if (permissions.includes("ALL")) {
@@ -138,5 +128,14 @@ export function isSupervisorOrAdmin(userRole) {
   if (!userRole) return false;
   const normalizedRole = String(userRole).toUpperCase().trim();
   return normalizedRole === "SUPERVISOR" || normalizedRole === "ADMIN";
+}
+
+/**
+ * Verifica se o usuário é TECHNICIAN
+ */
+export function isTechnician(userRole) {
+  if (!userRole) return false;
+  const normalizedRole = String(userRole).toUpperCase().trim();
+  return normalizedRole === "TECHNICIAN";
 }
 

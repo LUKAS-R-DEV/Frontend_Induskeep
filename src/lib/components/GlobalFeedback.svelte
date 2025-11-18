@@ -6,7 +6,23 @@
   let state;
   let progress = 100;
   let timerInterval = null;
-  const DURATION = 6000; // 6 segundos (aumentado de ~3 segundos)
+  let timeRemaining = 0;
+  
+  // Durações diferentes por tipo de mensagem
+  function getDuration(type) {
+    switch (type) {
+      case 'error':
+        return 10000; // 10 segundos para erros
+      case 'warning':
+        return 8000; // 8 segundos para avisos
+      case 'info':
+        return 6000; // 6 segundos para informações
+      case 'success':
+        return 5000; // 5 segundos para sucesso
+      default:
+        return 6000; // 6 segundos padrão
+    }
+  }
 
   $: state = $feedback;
 
@@ -25,9 +41,16 @@
     close();
   }
 
+  function formatTime(ms) {
+    const seconds = Math.ceil(ms / 1000);
+    return `${seconds}s`;
+  }
+
   $: if (state.show && state.type !== 'loading' && state.type !== 'confirm') {
     // Reseta o progresso quando uma nova mensagem aparece
     progress = 100;
+    const DURATION = getDuration(state.type);
+    timeRemaining = DURATION;
     
     // Limpa timer anterior se existir
     if (timerInterval) {
@@ -39,6 +62,7 @@
     timerInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       progress = Math.max(0, 100 - (elapsed / DURATION) * 100);
+      timeRemaining = Math.max(0, DURATION - elapsed);
       
       if (progress <= 0) {
         clearInterval(timerInterval);
@@ -50,8 +74,8 @@
 </script>
 
 {#if state.show}
-  <div class="overlay" transition:fade>
-    <div class="modal" in:fly={{ y: -20, duration: 200 }}>
+  <div class="overlay" transition:fade on:click|self={state.type === 'loading' || state.type === 'confirm' ? () => {} : close}>
+    <div class="modal" in:fly={{ y: -20, duration: 200 }} on:click|stopPropagation>
       {#if state.type === 'loading'}
         <div class="spinner"></div>
         <p>{state.message || 'Carregando...'}</p>
@@ -82,9 +106,12 @@
         <h3>{state.title}</h3>
         <p>{state.message}</p>
         <div class="progress-bar-container">
-          <div class="progress-bar" style="width: {progress}%"></div>
+          <div class="progress-bar {state.type}" style="width: {progress}%"></div>
         </div>
-        <button class="ok" on:click={close}>OK</button>
+        <div class="modal-footer">
+          <span class="time-remaining">{formatTime(timeRemaining)}</span>
+          <button class="ok" on:click={close}>OK</button>
+        </div>
       {/if}
     </div>
   </div>
@@ -166,10 +193,39 @@
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
   border-radius: 2px;
   transition: width 0.1s linear;
   min-width: 0;
+}
+
+.progress-bar.success {
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+.progress-bar.error {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.progress-bar.warning {
+  background: linear-gradient(90deg, #f1c40f, #f39c12);
+}
+
+.progress-bar.info {
+  background: linear-gradient(90deg, #3498db, #2980b9);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  gap: 1rem;
+}
+
+.time-remaining {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .actions {
@@ -191,8 +247,7 @@ button.ok,
 button.confirm {
   background: var(--primary, #3b82f6);
   color: #fff;
-  width: 100%;
-  margin-top: 0.5rem;
+  flex: 1;
 }
 
 button.ok:hover,

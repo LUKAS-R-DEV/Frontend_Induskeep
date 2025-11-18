@@ -352,6 +352,30 @@
   font-style: italic;
 }
 
+.history-footer {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.view-details-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #3b82f6;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.history-item:hover .view-details-link {
+  color: #2563eb;
+}
+
+.view-details-link svg {
+  flex-shrink: 0;
+}
+
 /* Empty State */
 .empty-state {
   display: flex;

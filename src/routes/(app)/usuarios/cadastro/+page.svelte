@@ -73,17 +73,12 @@
   $: if (confirmPassword) checkPasswordMatch();
 
   async function handleSubmit(e) {
-    console.log('📝 handleSubmit chamado', { name, email, role, passwordLength: password?.length, confirmPasswordLength: confirmPassword?.length });
-    
     // Reset loading e error
     loading = true;
     error = '';
 
     // Validações locais
-    console.log('🔍 Validando campos...', { name: !!name, email: !!email, role: !!role, password: !!password });
-    
     if (!name || !email || !role || !password) {
-      console.log('❌ Validação falhou: campos obrigatórios');
       loading = false;
       feedback.set({
         show: true,
@@ -94,9 +89,7 @@
       return;
     }
 
-    console.log('🔍 Validando comprimento da senha...', { passwordLength: password.length });
     if (password.length < 8) {
-      console.log('❌ Validação falhou: senha muito curta');
       loading = false;
       feedback.set({
         show: true,
@@ -107,9 +100,7 @@
       return;
     }
 
-    console.log('🔍 Validando força da senha...', { passwordStrengthLevel: passwordStrength.level });
     if (passwordStrength.level < 2) {
-      console.log('❌ Validação falhou: senha fraca');
       loading = false;
       feedback.set({
         show: true,
@@ -120,9 +111,7 @@
       return;
     }
 
-    console.log('🔍 Validando confirmação de senha...', { passwordsMatch: password === confirmPassword });
     if (password !== confirmPassword) {
-      console.log('❌ Validação falhou: senhas não coincidem');
       loading = false;
       feedback.set({
         show: true,
@@ -132,8 +121,6 @@
       });
       return;
     }
-
-    console.log('✅ Todas as validações passaram!');
     
     const payload = {
       name: name.trim(),
@@ -142,13 +129,8 @@
       role: role.toUpperCase(),
     };
 
-    console.log('📦 Payload preparado:', { ...payload, password: '***' });
-
     try {
-      console.log('📡 Chamando UserApi.register...');
-      const result = await UserApi.register(payload, { skipFeedback: true });
-      
-      console.log('✅ Usuário cadastrado com sucesso:', result);
+      await UserApi.register(payload, { skipFeedback: true });
       
       loading = false;
       

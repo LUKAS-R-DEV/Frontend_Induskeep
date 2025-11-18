@@ -10,7 +10,7 @@
   import { afterNavigate } from '$app/navigation';
 
   onMount(() => {
-    console.log('✅ Layout principal montado');
+    // Layout inicializado
   });
 
   afterNavigate(() => {

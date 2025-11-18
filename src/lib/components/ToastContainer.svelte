@@ -1,13 +1,27 @@
 <script>
   import { toasts } from "$lib/stores/toasts.stores.js";
-  import { fly, fade } from "svelte/transition";
+  import ToastItem from "./ToastItem.svelte";
+
+  function getDuration(type) {
+    switch (type) {
+      case 'error':
+        return 10000; // 10 segundos para erros
+      case 'warning':
+        return 8000; // 8 segundos para avisos
+      case 'info':
+        return 6000; // 6 segundos para informações
+      case 'success':
+        return 5000; // 5 segundos para sucesso
+      default:
+        return 6000; // 6 segundos padrão
+    }
+  }
 </script>
 
 <div class="toast-container">
   {#each $toasts as toast (toast.id)}
-    <div class="toast {toast.type}" in:fly={{ x: 40 }} out:fade>
-      {toast.message}
-    </div>
+    {@const duration = toast.duration || getDuration(toast.type)}
+    <ToastItem {toast} {duration} />
   {/each}
 </div>
 
@@ -21,16 +35,4 @@
   flex-direction: column;
   gap: 0.5rem;
 }
-.toast {
-  padding: 0.8rem 1.2rem;
-  border-radius: 8px;
-  color: #fff;
-  background: #333;
-  font-size: 0.9rem;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-.toast.success { background: #2ecc71; }
-.toast.error { background: #e74c3c; }
-.toast.warning { background: #f1c40f; color: #222; }
-.toast.info { background: #3498db; }
 </style>

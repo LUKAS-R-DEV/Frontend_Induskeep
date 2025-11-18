@@ -15,7 +15,6 @@
   let userId = '';
   let machines = [];
   let users = [];
-  let status = 'PENDING';
   let loading = false;
   let error = '';
   let loadingData = true;
@@ -61,7 +60,8 @@
     }
 
     try {
-      const payload = { title, description, machineId, userId, status };
+      // Sempre cria como PENDING - faz mais sentido uma ordem recém-criada estar pendente
+      const payload = { title, description, machineId, userId, status: 'PENDING' };
       await OrdersApi.create(payload);
 
       const notificationPayload = {
@@ -218,24 +218,6 @@
               {/each}
             </select>
           </div>
-        </div>
-
-        <!-- Status -->
-        <div class="form-group">
-          <label for="status">
-            <i class="fas fa-flag"></i>
-            Status Inicial
-          </label>
-          <select 
-            id="status" 
-            bind:value={status}
-            class="form-select"
-            disabled={loading}
-          >
-            <option value="PENDING">Pendente</option>
-            <option value="IN_PROGRESS">Em Andamento</option>
-          </select>
-          <small class="form-hint">Status inicial da ordem de serviço</small>
         </div>
 
         <!-- Error Message -->

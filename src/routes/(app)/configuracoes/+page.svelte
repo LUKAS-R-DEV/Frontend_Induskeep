@@ -50,7 +50,6 @@
       loading = true;
       error = "";
       const data = await SettingsApi.get();
-      console.log('📥 Dados recebidos do servidor:', data);
       if (data) {
         form = {
           minStockThreshold: data.minStockThreshold ?? 5,
@@ -59,7 +58,6 @@
           notificationEmail: data.notificationEmail ?? "",
           maintenanceWindow: data.maintenanceWindow ?? "08:00-18:00"
         };
-        console.log('📋 Form inicializado:', form);
       }
     } catch (e) {
       console.error("Erro ao carregar configurações:", e);
@@ -91,14 +89,11 @@
     // Valida janela de manutenção (formato: HH:MM-HH:MM)
     if (form.maintenanceWindow && form.maintenanceWindow.trim() !== "") {
       const trimmed = form.maintenanceWindow.trim();
-      console.log('🔍 Validando janela de manutenção:', trimmed);
-      
       // Aceita formato HH:MM-HH:MM ou H:MM-H:MM
       const pattern = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/;
       const match = trimmed.match(pattern);
       
       if (!match) {
-        console.error('❌ Formato não corresponde ao padrão:', trimmed);
         error = "Formato de janela de manutenção inválido. Use: HH:MM-HH:MM (ex: 08:00-18:00)";
         return false;
       }
@@ -108,8 +103,6 @@
       const startMin = parseInt(match[2], 10);
       const endHour = parseInt(match[3], 10);
       const endMin = parseInt(match[4], 10);
-      
-      console.log('📊 Horários extraídos:', { startHour, startMin, endHour, endMin });
       
       if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23) {
         error = "As horas devem estar entre 00 e 23";
@@ -123,7 +116,6 @@
       
       // Normaliza o formato para HH:MM-HH:MM (com zeros à esquerda)
       const normalized = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}-${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
-      console.log('✅ Janela normalizada:', normalized);
       form.maintenanceWindow = normalized;
     }
 
@@ -137,10 +129,7 @@
     success = false;
     error = "";
 
-    console.log('🔍 Validando formulário...', form);
-    
     if (!validateForm()) {
-      console.error('❌ Validação falhou:', error);
       saving = false;
       feedback.set({
         show: true,
@@ -150,8 +139,6 @@
       });
       return;
     }
-
-    console.log('✅ Validação passou. Form após validação:', form);
 
     try {
       // Prepara payload, normalizando campos vazios para null
@@ -163,9 +150,7 @@
         maintenanceWindow: (form.maintenanceWindow && form.maintenanceWindow.trim()) || null
       };
 
-      console.log('💾 Salvando configurações:', payload);
-      const result = await SettingsApi.update(payload);
-      console.log('✅ Resposta do servidor:', result);
+      await SettingsApi.update(payload);
       
       feedback.set({
         show: true,

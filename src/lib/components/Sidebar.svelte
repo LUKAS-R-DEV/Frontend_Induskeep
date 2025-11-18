@@ -40,7 +40,6 @@
       const stored = localStorage.getItem('user');
       if (stored) {
         user = JSON.parse(stored);
-        console.log('Sidebar: User loaded from localStorage', user);
       } else {
         user = null;
       }
@@ -141,7 +140,7 @@
       icon: History,
       href: '/historico',
       permission: 'VIEW_HISTORY',
-      roles: ['SUPERVISOR', 'ADMIN'] // Apenas supervisor e admin
+      roles: ['TECHNICIAN', 'SUPERVISOR', 'ADMIN'] // Técnicos veem apenas suas ordens
     },
     {
       label: 'Notificações',
@@ -195,21 +194,6 @@
     return normalizedRoles.includes(userRole);
   }
 
-  // Reativo para debug
-  $: if (user) {
-    console.log('Sidebar: User reactive update', { 
-      user, 
-      role: user?.role, 
-      hasRole: !!user?.role,
-      isAdmin: isAdmin(user?.role?.toUpperCase())
-    });
-  }
-  
-  // Debug: mostra quais itens estão visíveis
-  $: if (user) {
-    const visibleItems = menuItems.filter(item => isItemVisible(item));
-    console.log('Sidebar: Visible items', visibleItems.map(i => i.label));
-  }
 
   // Função para verificar se um item está ativo
   function isActive(href) {

@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { StockApi } from '$lib/api/stock';
-  import { hasPermission } from '$lib/utils/permissions.js';
+  import { hasPermission, isTechnician } from '$lib/utils/permissions.js';
 
   // ✅ Ícones Lucide
   import {
@@ -38,7 +38,6 @@
         const stored = localStorage.getItem('user');
         if (stored) {
           user = JSON.parse(stored);
-          console.log('🔍 Movimentações - User carregado:', { user, role: user?.role, roleType: typeof user?.role });
         }
       }
 
@@ -62,12 +61,21 @@
     });
 
   $: movFiltradas = movimentacoes.filter(
-    (m) =>
-      (!filtroTipo || m.type === filtroTipo) &&
-      (!busca ||
-        m.piece?.name?.toLowerCase().includes(busca.toLowerCase()) ||
-        m.piece?.code?.toLowerCase().includes(busca.toLowerCase()) ||
-        m.user?.name?.toLowerCase().includes(busca.toLowerCase()))
+    (m) => {
+      // Técnicos só veem saídas
+      const isTech = isTechnician(user?.role);
+      if (isTech && m.type !== 'EXIT') {
+        return false;
+      }
+      
+      return (
+        (!filtroTipo || m.type === filtroTipo) &&
+        (!busca ||
+          m.piece?.name?.toLowerCase().includes(busca.toLowerCase()) ||
+          m.piece?.code?.toLowerCase().includes(busca.toLowerCase()) ||
+          m.user?.name?.toLowerCase().includes(busca.toLowerCase()))
+      );
+    }
   );
 
   function labelTipo(tipo) {
@@ -81,13 +89,10 @@
   // Tornar reativo para atualizar quando user mudar
   $: canCreateMovement = (() => {
     if (!user || !user.role) {
-      console.log('❌ Movimentações - canCreate: sem user ou role', { user, hasUser: !!user, hasRole: !!user?.role });
       return false;
     }
     const userRole = String(user.role).toUpperCase().trim();
-    const result = userRole === 'ADMIN' || userRole === 'SUPERVISOR' || userRole === 'TECHNICIAN';
-    console.log('🔍 Movimentações - canCreate:', { userRole: user.role, normalized: userRole, result });
-    return result;
+    return userRole === 'ADMIN' || userRole === 'SUPERVISOR' || userRole === 'TECHNICIAN';
   })();
 
   function canCreate() {
@@ -169,7 +174,9 @@
           </label>
           <select id="filtroTipo" bind:value={filtroTipo} class="filter-select">
             <option value="">Todos os tipos</option>
-            <option value="ENTRY">Entrada</option>
+            {#if !isTechnician(user?.role)}
+              <option value="ENTRY">Entrada</option>
+            {/if}
             <option value="EXIT">Saída</option>
           </select>
         </div>

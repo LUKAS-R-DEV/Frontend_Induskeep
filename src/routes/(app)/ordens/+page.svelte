@@ -51,7 +51,6 @@
         const stored = localStorage.getItem('user');
         if (stored) {
           user = JSON.parse(stored);
-          console.log('🔍 Ordens - User carregado:', { user, role: user?.role, roleType: typeof user?.role });
         }
       }
       const data = await OrdersApi.list();
@@ -204,12 +203,9 @@
   // Tornar reativo para atualizar quando user mudar
   $: canCreateOrder = (() => {
     if (!user || !user.role) {
-      console.log('❌ Ordens - canCreate: sem user ou role', { user, hasUser: !!user, hasRole: !!user?.role });
       return false;
     }
-    const result = hasPermission(user.role, 'CREATE_ORDER');
-    console.log('🔍 Ordens - canCreate:', { userRole: user.role, normalized: String(user.role).toUpperCase().trim(), result });
-    return result;
+    return hasPermission(user.role, 'CREATE_ORDER');
   })();
 
   function canCreate() {

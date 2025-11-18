@@ -5,6 +5,7 @@
   import { PieceApi } from '$lib/api/pieces';
   import { StockApi } from '$lib/api/stock';
   import { feedback } from '$lib/stores/feedback.stores.js';
+  import { isTechnician } from '$lib/utils/permissions.js';
 
   let pecas = [];
   let pieceId = '';
@@ -123,7 +124,13 @@
     <div class="header-content">
       <div>
         <h1 class="page-title">Nova Movimentação</h1>
-        <p class="page-subtitle">Registre uma entrada ou saída de peças no estoque</p>
+        <p class="page-subtitle">
+          {#if isTechnician(user?.role)}
+            Registre uma saída de peças do estoque
+          {:else}
+            Registre uma entrada ou saída de peças no estoque
+          {/if}
+        </p>
       </div>
       <button class="btn-secondary" on:click={() => goto('/estoque/movimentacoes')}>
         <i class="fas fa-arrow-left"></i>

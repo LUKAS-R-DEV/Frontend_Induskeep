@@ -53,83 +53,8 @@
       // Carrega dados da ordem
       ordem = await OrdersApi.get(id);
       
-      // Carrega histórico se disponível e constrói timeline
-      try {
-        const historyData = await HistoryApi.get(id);
-        
-        // Verifica se é array ou objeto com propriedade history
-        let historyRecords = [];
-        if (Array.isArray(historyData)) {
-          historyRecords = historyData;
-        } else if (historyData && Array.isArray(historyData.history)) {
-          historyRecords = historyData.history;
-        } else if (historyData && historyData.data && Array.isArray(historyData.data)) {
-          historyRecords = historyData.data;
-        }
-        
-        // Constrói timeline com eventos da ordem
-        history = [];
-        
-        // 1. Adiciona criação da ordem
-        if (ordem.createdAt) {
-          history.push({
-            type: 'created',
-            date: ordem.createdAt,
-            notes: `Ordem de serviço criada`,
-            status: ordem.status
-          });
-        }
-        
-        // 2. Adiciona histórico de conclusão (se existir)
-        if (historyRecords && historyRecords.length > 0) {
-          historyRecords.forEach(h => {
-            history.push({
-              type: 'completed',
-              date: h.completedAt || h.createdAt,
-              notes: h.notes || 'Ordem de serviço concluída',
-              status: 'COMPLETED'
-            });
-          });
-        }
-        
-        // 3. Adiciona atualização (se diferente da criação)
-        if (ordem.updatedAt && ordem.updatedAt !== ordem.createdAt) {
-          // Verifica se não é a mesma data da conclusão
-          const isUpdate = !historyRecords.some(h => {
-            const completedDate = new Date(h.completedAt || h.createdAt).getTime();
-            const updatedDate = new Date(ordem.updatedAt).getTime();
-            return Math.abs(completedDate - updatedDate) < 1000; // menos de 1 segundo de diferença
-          });
-          
-          if (isUpdate) {
-            history.push({
-              type: 'updated',
-              date: ordem.updatedAt,
-              notes: `Ordem atualizada`,
-              status: ordem.status
-            });
-          }
-        }
-        
-        // Ordena timeline por data (mais recente primeiro)
-        history.sort((a, b) => {
-          const dateA = new Date(a.date || 0);
-          const dateB = new Date(b.date || 0);
-          return dateB - dateA;
-        });
-      } catch (e) {
-        console.warn('Erro ao carregar histórico:', e);
-        // Mesmo com erro, mostra pelo menos a criação
-        history = [];
-        if (ordem.createdAt) {
-          history.push({
-            type: 'created',
-            date: ordem.createdAt,
-            notes: `Ordem de serviço criada`,
-            status: ordem.status
-          });
-        }
-      }
+      // Carrega histórico e constrói timeline
+      await buildTimeline();
     } catch (e) {
       console.error('Erro ao carregar ordem:', e);
       error = e?.message || 'Falha ao carregar os detalhes da ordem de serviço.';
@@ -190,6 +115,88 @@
     return statusIcons[statusUpper] || 'fa-circle';
   }
 
+  // Função auxiliar para construir a timeline
+  async function buildTimeline() {
+    if (!ordem) return;
+    
+    try {
+      const historyData = await HistoryApi.get(id);
+      
+      // Verifica se é array ou objeto com propriedade history
+      let historyRecords = [];
+      if (Array.isArray(historyData)) {
+        historyRecords = historyData;
+      } else if (historyData && Array.isArray(historyData.history)) {
+        historyRecords = historyData.history;
+      } else if (historyData && historyData.data && Array.isArray(historyData.data)) {
+        historyRecords = historyData.data;
+      }
+      
+      // Constrói timeline com eventos da ordem
+      history = [];
+      
+      // 1. Adiciona criação da ordem
+      if (ordem.createdAt) {
+        history.push({
+          type: 'created',
+          date: ordem.createdAt,
+          notes: `Ordem de serviço criada`,
+          status: ordem.status
+        });
+      }
+      
+      // 2. Adiciona histórico de conclusão (se existir)
+      if (historyRecords && historyRecords.length > 0) {
+        historyRecords.forEach(h => {
+          history.push({
+            type: 'completed',
+            date: h.completedAt || h.createdAt,
+            notes: h.notes || 'Ordem de serviço concluída',
+            status: 'COMPLETED'
+          });
+        });
+      }
+      
+      // 3. Adiciona atualização (se diferente da criação)
+      if (ordem.updatedAt && ordem.updatedAt !== ordem.createdAt) {
+        // Verifica se não é a mesma data da conclusão
+        const isUpdate = !historyRecords.some(h => {
+          const completedDate = new Date(h.completedAt || h.createdAt).getTime();
+          const updatedDate = new Date(ordem.updatedAt).getTime();
+          return Math.abs(completedDate - updatedDate) < 1000; // menos de 1 segundo de diferença
+        });
+        
+        if (isUpdate) {
+          history.push({
+            type: 'updated',
+            date: ordem.updatedAt,
+            notes: `Ordem atualizada`,
+            status: ordem.status
+          });
+        }
+      }
+      
+      // Ordena timeline por data (mais recente primeiro)
+      history.sort((a, b) => {
+        const dateA = new Date(a.date || 0);
+        const dateB = new Date(b.date || 0);
+        return dateB - dateA;
+      });
+    } catch (e) {
+      console.warn('Erro ao carregar histórico:', e);
+      // Mesmo com erro, mostra pelo menos a criação
+      history = [];
+      if (ordem.createdAt) {
+        history.push({
+          type: 'created',
+          date: ordem.createdAt,
+          notes: `Ordem de serviço criada`,
+          status: ordem.status
+        });
+      }
+    }
+  }
+
   async function excluirOS() {
     try {
       const confirmed = await new Promise((resolve) => {
@@ -230,6 +237,10 @@
     if (!user || !hasPermission(user.role, 'UPDATE_ORDER')) {
       return false;
     }
+    // Ordens concluídas não podem ser editadas
+    if (ordem && ordem.status === 'COMPLETED') {
+      return false;
+    }
     // Técnicos não podem editar (removido botão editar para técnicos)
     const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
     if (userRole === 'TECHNICIAN') {
@@ -239,6 +250,10 @@
   }
 
   function canDelete() {
+    // Ordens concluídas não podem ser excluídas
+    if (ordem && ordem.status === 'COMPLETED') {
+      return false;
+    }
     return user && (hasPermission(user.role, 'DELETE_ORDER') || hasPermission(user.role, 'ALL'));
   }
 
@@ -253,11 +268,16 @@
     if (ordem.userId !== user.id) {
       return false;
     }
+    // Permite concluir novamente mesmo se já estiver concluída (para reabertura)
     return ordem.status !== 'CANCELLED';
   }
 
   function canStart() {
     if (!ordem || !user) return false;
+    // Ordens concluídas não podem ser iniciadas
+    if (ordem.status === 'COMPLETED') {
+      return false;
+    }
     const userRole = String(user.role || '').toUpperCase().trim();
     // Apenas técnicos podem iniciar ordens
     if (userRole !== 'TECHNICIAN') {
@@ -269,6 +289,10 @@
 
   function canPause() {
     if (!ordem || !user) return false;
+    // Ordens concluídas não podem ser pausadas
+    if (ordem.status === 'COMPLETED') {
+      return false;
+    }
     const userRole = String(user.role || '').toUpperCase().trim();
     // Técnico pode pausar apenas ordens atribuídas a ele que estejam em andamento
     if (userRole === 'TECHNICIAN') {
@@ -296,6 +320,9 @@
       
       // Recarrega os dados da ordem
       ordem = await OrdersApi.get(id);
+      
+      // Reconstrói a timeline
+      await buildTimeline();
 
       feedback.set({
         show: true,
@@ -331,6 +358,9 @@
       
       // Recarrega os dados da ordem
       ordem = await OrdersApi.get(id);
+      
+      // Reconstrói a timeline
+      await buildTimeline();
 
       feedback.set({
         show: true,
@@ -374,60 +404,8 @@
       // Recarrega os dados da ordem para atualizar o status
       ordem = await OrdersApi.get(id);
       
-      // Recarrega o histórico
-      try {
-        const historyData = await HistoryApi.get(id);
-        let historyRecords = [];
-        if (Array.isArray(historyData)) {
-          historyRecords = historyData;
-        } else if (historyData && Array.isArray(historyData.history)) {
-          historyRecords = historyData.history;
-        } else if (historyData && historyData.data && Array.isArray(historyData.data)) {
-          historyRecords = historyData.data;
-        }
-        
-        history = [];
-        if (ordem.createdAt) {
-          history.push({
-            type: 'created',
-            date: ordem.createdAt,
-            notes: `Ordem de serviço criada`,
-            status: ordem.status
-          });
-        }
-        if (historyRecords && historyRecords.length > 0) {
-          historyRecords.forEach(h => {
-            history.push({
-              type: 'completed',
-              date: h.completedAt || h.createdAt,
-              notes: h.notes || 'Ordem de serviço concluída',
-              status: 'COMPLETED'
-            });
-          });
-        }
-        if (ordem.updatedAt && ordem.updatedAt !== ordem.createdAt) {
-          const isUpdate = !historyRecords.some(h => {
-            const completedDate = new Date(h.completedAt || h.createdAt).getTime();
-            const updatedDate = new Date(ordem.updatedAt).getTime();
-            return Math.abs(completedDate - updatedDate) < 1000;
-          });
-          if (isUpdate) {
-            history.push({
-              type: 'updated',
-              date: ordem.updatedAt,
-              notes: `Ordem atualizada`,
-              status: ordem.status
-            });
-          }
-        }
-        history.sort((a, b) => {
-          const dateA = new Date(a.date || 0);
-          const dateB = new Date(b.date || 0);
-          return dateB - dateA;
-        });
-      } catch (e) {
-        console.warn('Erro ao recarregar histórico:', e);
-      }
+      // Reconstrói a timeline com os dados atualizados
+      await buildTimeline();
 
       feedback.set({
         show: true,
@@ -454,7 +432,13 @@
     <div class="header-content">
       <div>
         <h1 class="page-title">Detalhes da Ordem de Serviço</h1>
-        <p class="page-subtitle">Visualize informações completas da ordem</p>
+        <p class="page-subtitle">
+          {#if ordem && ordem.status === 'COMPLETED'}
+            Ordem concluída - Apenas visualização
+          {:else}
+            Visualize informações completas da ordem
+          {/if}
+        </p>
       </div>
       <button class="btn-secondary" on:click={() => goto('/ordens')}>
         <i class="fas fa-arrow-left"></i>

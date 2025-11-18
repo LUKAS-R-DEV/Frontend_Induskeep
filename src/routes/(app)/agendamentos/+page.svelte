@@ -5,7 +5,7 @@
   import { OrdersApi } from "$lib/api/orders";
   import { goto } from "$app/navigation";
   import { feedback } from '$lib/stores/feedback.stores.js';
-  import { hasPermission } from '$lib/utils/permissions.js';
+  import { hasPermission, isAdmin } from '$lib/utils/permissions.js';
   import { getUser } from '$lib/stores/users.js';
 
   // ✅ Ícones Lucide
@@ -28,6 +28,7 @@
     Play,
     Trash2,
     CalendarX,
+    AlertTriangle,
   } from 'lucide-svelte';
 
   let currentDate = new Date();
@@ -75,17 +76,35 @@
     }
   }
 
+  // Verifica se o agendamento está atrasado (data já passou e não foi iniciado)
+  function isOverdue(schedule) {
+    if (!schedule || !schedule.date) return false;
+    const scheduleDate = new Date(schedule.date);
+    const now = new Date();
+    return scheduleDate < now;
+  }
+
   $: if (!loading && schedules.length >= 0) generateCalendar();
 
-  $: filteredSchedules = schedules.filter(s => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      (s.machine?.name || '').toLowerCase().includes(q) ||
-      (s.user?.name || '').toLowerCase().includes(q) ||
-      (s.notes || '').toLowerCase().includes(q)
-    );
-  });
+  $: filteredSchedules = schedules
+    .filter(s => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        (s.machine?.name || '').toLowerCase().includes(q) ||
+        (s.user?.name || '').toLowerCase().includes(q) ||
+        (s.notes || '').toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      // Agendamentos atrasados primeiro
+      const aOverdue = isOverdue(a);
+      const bOverdue = isOverdue(b);
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      // Depois ordena por data (mais antigos primeiro)
+      return new Date(a.date) - new Date(b.date);
+    });
 
   function generateCalendar() {
     const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -104,9 +123,10 @@
         .map((s) => ({
           id: s.id,
           text: s.machine?.name || "Agendamento",
-          color: "#3b82f6",
+          color: isOverdue(s) ? "#ef4444" : "#3b82f6", // Vermelho para atrasados
           notes: s.notes,
-          schedule: s
+          schedule: s,
+          isOverdue: isOverdue(s)
         }));
       daysArray.push({ label: day, events, other: false });
     }
@@ -165,11 +185,13 @@
 
   async function startMaintenance(schedule) {
     try {
+      // Sempre cria como PENDING - o técnico pode iniciar depois
       await OrdersApi.create({
         title: `Execução de manutenção agendada (${schedule.machine?.name ?? "Máquina"})`,
         description: schedule.notes || "Manutenção iniciada a partir de agendamento.",
         machineId: schedule.machineId,
         userId: schedule.userId,
+        status: 'PENDING',
         scheduleId: schedule.id
       });
       
@@ -216,6 +238,19 @@
 
   function canDelete() {
     return user && hasPermission(user.role, 'ALL');
+  }
+
+  function canStartMaintenance(schedule) {
+    if (!user || !schedule) return false;
+    
+    // Admin pode iniciar qualquer agendamento
+    if (isAdmin(user.role)) {
+      return true;
+    }
+    
+    // Apenas o criador do agendamento pode iniciá-lo
+    const creatorId = schedule.createdById || schedule.createdBy?.id;
+    return creatorId && creatorId === user.id;
   }
 </script>
 
@@ -323,19 +358,23 @@
                 <div class="day-events">
                   {#each d.events as e}
                     <div
-                      class="schedule-item"
+                      class="schedule-item {e.isOverdue ? 'overdue-event' : ''}"
                       style="background: {e.color}"
                       on:click={() => {
-                        const msg = `Agendamento: ${e.text}\nNotas: ${e.notes || "Sem observações."}`;
+                        const overdueMsg = e.isOverdue ? '\n⚠️ ATENÇÃO: Este agendamento está atrasado!' : '';
+                        const msg = `Agendamento: ${e.text}\nNotas: ${e.notes || "Sem observações."}${overdueMsg}`;
                         feedback.set({
                           show: true,
-                          type: 'info',
-                          title: 'Agendamento',
+                          type: e.isOverdue ? 'warning' : 'info',
+                          title: e.isOverdue ? 'Agendamento Atrasado' : 'Agendamento',
                           message: msg,
                         });
                       }}
-                      title="{e.text}"
+                      title="{e.isOverdue ? '⚠️ Atrasado: ' : ''}{e.text}"
                     >
+                      {#if e.isOverdue}
+                        <AlertTriangle size={10} style="margin-right: 2px;" />
+                      {/if}
                       {e.text}
                     </div>
                   {/each}
@@ -358,14 +397,26 @@
 
       <div class="schedules-list">
         {#each filteredSchedules as s}
-          <div class="schedule-item-card">
+          <div class="schedule-item-card {isOverdue(s) ? 'overdue' : ''}">
             <div class="schedule-icon">
-              <CalendarCheck size={24} color="#3b82f6" />
+              {#if isOverdue(s)}
+                <AlertTriangle size={24} color="#ef4444" />
+              {:else}
+                <CalendarCheck size={24} color="#3b82f6" />
+              {/if}
             </div>
             <div class="schedule-content">
               <div class="schedule-header">
-                <h3 class="schedule-title">{s.machine?.name || 'Agendamento'}</h3>
-                <span class="schedule-date">
+                <div class="schedule-title-wrapper">
+                  <h3 class="schedule-title">{s.machine?.name || 'Agendamento'}</h3>
+                  {#if isOverdue(s)}
+                    <span class="overdue-badge">
+                      <AlertTriangle size={12} />
+                      Atrasado
+                    </span>
+                  {/if}
+                </div>
+                <span class="schedule-date {isOverdue(s) ? 'overdue-date' : ''}">
                   <Clock size={14} />
                   {formatDate(s.date)}
                 </span>
@@ -390,14 +441,16 @@
               </div>
             </div>
             <div class="schedule-actions">
-              <button
-                class="action-btn start"
-                on:click={() => startMaintenance(s)}
-                title="Iniciar manutenção"
-              >
-                <Play size={16} />
-                Iniciar
-              </button>
+              {#if canStartMaintenance(s)}
+                <button
+                  class="action-btn start"
+                  on:click={() => startMaintenance(s)}
+                  title="Iniciar manutenção"
+                >
+                  <Play size={16} />
+                  Iniciar
+                </button>
+              {/if}
               {#if canDelete()}
                 <button
                   class="action-btn delete"
