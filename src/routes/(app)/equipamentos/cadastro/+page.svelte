@@ -175,21 +175,15 @@
               <i class="fas fa-map-marker-alt"></i>
               Localização / Setor *
             </label>
-            <select 
+            <input 
               id="location" 
+              type="text" 
               bind:value={location} 
               required
-              class="form-select"
+              placeholder="Ex: Produção, Utilidades, Expedição..."
+              class="form-input"
               disabled={loading}
-            >
-              <option value="">Selecione um setor</option>
-              <option value="Produção">Produção</option>
-              <option value="Utilidades">Utilidades</option>
-              <option value="Expedição">Expedição</option>
-              <option value="Preparação">Preparação</option>
-              <option value="Manutenção">Manutenção</option>
-              <option value="Outros">Outros</option>
-            </select>
+            />
             <small class="form-hint">Setor onde o equipamento está localizado</small>
           </div>
           <div class="form-group">
@@ -204,7 +198,6 @@
               disabled={loading}
             >
               <option value="ACTIVE">Ativo</option>
-              <option value="MAINTENANCE">Em Manutenção</option>
               <option value="INACTIVE">Inativo</option>
             </select>
             <small class="form-hint">

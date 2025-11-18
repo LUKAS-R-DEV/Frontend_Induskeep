@@ -3,6 +3,15 @@
   import { goto } from '$app/navigation';
   import { AuthApi } from '$lib/api/auth';
   import { feedback } from '$lib/stores/feedback.stores.js';
+  import {
+    Key,
+    AlertCircle,
+    Mail,
+    Loader2,
+    Send,
+    ArrowLeft,
+    MailOpen,
+  } from 'lucide-svelte';
 
   let email = '';
   let loading = false;
@@ -54,7 +63,7 @@
     <div class="auth-header">
       <div class="logo-container">
         <div class="logo-icon">
-          <i class="fas fa-key"></i>
+          <Key size={28} color="white" />
         </div>
         <h1 class="logo-text">INDUSKEEP</h1>
       </div>
@@ -67,14 +76,14 @@
     <form on:submit={handleRecovery} class="auth-form">
       {#if errorMessage}
         <div class="alert alert-error">
-          <i class="fas fa-exclamation-circle"></i>
+          <AlertCircle size={18} color="#ef4444" />
           <span>{errorMessage}</span>
         </div>
       {/if}
 
       <div class="form-group">
         <label for="email">
-          <i class="fas fa-envelope"></i>
+          <Mail size={16} />
           E-mail
         </label>
         <input 
@@ -90,26 +99,47 @@
 
       <button type="submit" class="btn btn-primary" disabled={loading}>
         {#if loading}
-          <i class="fas fa-spinner fa-spin"></i>
+          <Loader2 class="spin" size={18} />
           <span>Enviando...</span>
         {:else}
-          <i class="fas fa-paper-plane"></i>
+          <Send size={18} />
           <span>Enviar Instruções</span>
         {/if}
       </button>
 
       <div class="auth-footer">
         <button type="button" class="btn btn-secondary" on:click={() => goto('/login')} disabled={loading}>
-          <i class="fas fa-arrow-left"></i>
+          <ArrowLeft size={18} />
           <span>Voltar para Login</span>
         </button>
       </div>
     </form>
 
     <div class="auth-decorative">
-      <div class="decorative-circle circle-1"></div>
-      <div class="decorative-circle circle-2"></div>
-      <div class="decorative-circle circle-3"></div>
+      <MailOpen class="decorative-icon icon-1" size={40} />
+      <Send class="decorative-icon icon-2" size={32} />
+      <Key class="decorative-icon icon-3" size={24} />
     </div>
   </div>
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+  }
+
+  .logo-icon {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3);
+  }
+</style>

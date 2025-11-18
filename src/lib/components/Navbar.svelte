@@ -1,5 +1,7 @@
 <script>
   import { page } from '$app/stores';
+  import { onMount, onDestroy } from 'svelte';
+  import { NotificationsApi } from '$lib/api/notifications';
   import { 
     Menu, 
     Bell, 
@@ -20,12 +22,57 @@
     AlertTriangle 
   } from "lucide-svelte";
 
+  let unreadCount = 0;
+  let loadingNotifications = false;
+  let intervalId = null;
+
+  // Função para buscar notificações não lidas
+  async function fetchUnreadCount() {
+    if (loadingNotifications) return;
+    
+    try {
+      loadingNotifications = true;
+      const notifications = await NotificationsApi.list();
+      unreadCount = notifications.filter(n => !n.read).length;
+    } catch (err) {
+      console.error('Erro ao buscar notificações:', err);
+      unreadCount = 0;
+    } finally {
+      loadingNotifications = false;
+    }
+  }
+
   // Função para alternar o sidebar
   function toggleSidebar() {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('sidebar-toggle'));
     }
   }
+
+  // Atualizar contador quando a página de notificações mudar
+  $: if ($page.url.pathname === '/notificacoes') {
+    fetchUnreadCount();
+  }
+
+  onMount(() => {
+    fetchUnreadCount();
+    // Atualizar a cada 30 segundos
+    intervalId = setInterval(fetchUnreadCount, 30000);
+    
+    // Escutar eventos de atualização de notificações
+    if (typeof window !== 'undefined') {
+      window.addEventListener('notification-updated', fetchUnreadCount);
+    }
+  });
+
+  onDestroy(() => {
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('notification-updated', fetchUnreadCount);
+    }
+  });
 
   // Mapa de breadcrumbs com ícones Lucide (SVG vetoriais)
   const breadcrumbMap = [
@@ -105,7 +152,9 @@
         aria-label="Notificações"
       >
         <Bell size={20} />
-        <span class="notification-badge">0</span>
+        {#if unreadCount > 0}
+          <span class="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+        {/if}
       </a>
     </div>
   </div>
@@ -237,17 +286,22 @@
 
   .notification-badge {
     position: absolute;
-    top: -2px;
-    right: -2px;
+    top: -4px;
+    right: -4px;
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
-    font-size: 0.7rem;
+    font-size: 0.625rem;
     font-weight: 700;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
+    padding: 0.125rem 0.375rem;
+    border-radius: 10px;
     border: 2px solid white;
-    min-width: 20px;
-    text-align: center;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   /* SVG refinado */
@@ -295,12 +349,28 @@
       width: 40px;
       height: 40px;
     }
+
+    .notification-badge {
+      font-size: 0.5625rem;
+      min-width: 16px;
+      height: 16px;
+      padding: 0.125rem 0.25rem;
+      top: -3px;
+      right: -3px;
+    }
   }
 
   @media (max-width: 480px) {
     .page-title {
       font-size: 1rem;
       max-width: 150px;
+    }
+
+    .notification-badge {
+      font-size: 0.5rem;
+      min-width: 14px;
+      height: 14px;
+      padding: 0.0625rem 0.25rem;
     }
   }
 </style>

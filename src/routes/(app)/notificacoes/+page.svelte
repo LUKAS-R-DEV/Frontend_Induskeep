@@ -23,6 +23,11 @@
   onMount(async () => {
     try {
       notificacoes = await NotificationsApi.list();
+      
+      // Disparar evento para atualizar contador na navbar
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+      }
     } catch (err) {
       error = "Erro ao carregar notificações.";
       console.error(err);
@@ -37,6 +42,11 @@
       notificacoes = notificacoes.map((n) =>
         n.id === id ? { ...n, read: true } : n
       );
+      
+      // Disparar evento para atualizar contador na navbar
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+      }
     } catch (err) {
       feedback.set({
         show: true,
@@ -53,6 +63,11 @@
         await NotificationsApi.markAsRead(n.id);
       }
       notificacoes = notificacoes.map((n) => ({ ...n, read: true }));
+      
+      // Disparar evento para atualizar contador na navbar
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+      }
       
       feedback.set({
         show: true,
@@ -88,6 +103,11 @@
         await NotificationsApi.delete(n.id);
       }
       notificacoes = [];
+      
+      // Disparar evento para atualizar contador na navbar
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notification-updated'));
+      }
       
       feedback.set({
         show: true,

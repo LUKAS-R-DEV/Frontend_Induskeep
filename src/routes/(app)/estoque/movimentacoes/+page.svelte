@@ -5,6 +5,26 @@
   import { StockApi } from '$lib/api/stock';
   import { hasPermission } from '$lib/utils/permissions.js';
 
+  // ✅ Ícones Lucide
+  import {
+    ArrowLeft,
+    Plus,
+    Loader2,
+    AlertCircle,
+    RotateCcw,
+    Search,
+    Filter,
+    X,
+    ArrowDown,
+    ArrowUp,
+    Barcode,
+    Box,
+    User,
+    Calendar,
+    MessageSquare,
+    ArrowUpDown,
+  } from 'lucide-svelte';
+
   let loading = true;
   let error = '';
   let movimentacoes = [];
@@ -91,7 +111,7 @@
       </div>
       <div class="header-actions">
         <button class="btn-secondary" on:click={() => goto('/estoque')}>
-          <i class="fas fa-arrow-left"></i>
+          <ArrowLeft size={18} />
           Voltar
         </button>
         {#if canCreateMovement}
@@ -100,7 +120,7 @@
             on:click={() => goto('/estoque/movimentacoes/nova')}
             title="Registrar nova movimentação"
           >
-            <i class="fas fa-plus"></i>
+            <Plus size={18} />
             Nova Movimentação
           </button>
         {/if}
@@ -112,19 +132,19 @@
   {#if loading}
     <div class="loading-state">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <Loader2 class="spin" size={32} />
       </div>
       <p>Carregando movimentações...</p>
     </div>
   {:else if error}
     <div class="error-state">
       <div class="error-icon">
-        <i class="fas fa-exclamation-circle"></i>
+        <AlertCircle size={36} color="#ef4444" />
       </div>
       <h3>Erro ao carregar dados</h3>
       <p>{error}</p>
       <button class="btn-retry" on:click={() => window.location.reload()}>
-        <i class="fas fa-redo"></i>
+        <RotateCcw size={18} />
         Tentar novamente
       </button>
     </div>
@@ -132,7 +152,7 @@
     <!-- Filters -->
     <div class="filters-card">
       <div class="search-wrapper">
-        <i class="fas fa-search search-icon"></i>
+        <Search class="search-icon" size={18} />
         <input 
           type="text" 
           class="search-input"
@@ -144,7 +164,7 @@
       <div class="filters-row">
         <div class="filter-item">
           <label for="filtroTipo">
-            <i class="fas fa-filter"></i>
+            <Filter size={16} />
             Tipo
           </label>
           <select id="filtroTipo" bind:value={filtroTipo} class="filter-select">
@@ -156,7 +176,7 @@
 
         {#if busca || filtroTipo}
           <button class="btn-clear-filters" on:click={() => { busca = ''; filtroTipo = ''; }}>
-            <i class="fas fa-times"></i>
+            <X size={18} />
             Limpar Filtros
           </button>
         {/if}
@@ -168,7 +188,7 @@
       <div class="movements-card">
         <div class="card-header">
           <h2 class="card-title">
-            <i class="fas fa-exchange-alt"></i>
+            <ArrowUpDown size={20} />
             Histórico de Movimentações ({movFiltradas.length})
           </h2>
         </div>
@@ -177,7 +197,11 @@
           {#each movFiltradas as m}
             <div class="movement-item">
               <div class="movement-icon {getTypeClass(m.type)}">
-                <i class="fas fa-{m.type === 'ENTRY' ? 'arrow-down' : 'arrow-up'}"></i>
+                {#if m.type === 'ENTRY'}
+                  <ArrowDown size={24} />
+                {:else}
+                  <ArrowUp size={24} />
+                {/if}
               </div>
               <div class="movement-content">
                 <div class="movement-header">
@@ -188,24 +212,24 @@
                 </div>
                 <div class="movement-meta">
                   <div class="meta-item">
-                    <i class="fas fa-barcode"></i>
+                    <Barcode size={14} />
                     <span>Código: {m.piece?.code || 'N/A'}</span>
                   </div>
                   <div class="meta-item">
-                    <i class="fas fa-box"></i>
+                    <Box size={14} />
                     <span>Quantidade: <strong>{m.quantity}</strong></span>
                   </div>
                   <div class="meta-item">
-                    <i class="fas fa-user"></i>
+                    <User size={14} />
                     <span>{m.user?.name || 'N/A'}</span>
                   </div>
                   <div class="meta-item">
-                    <i class="fas fa-calendar"></i>
+                    <Calendar size={14} />
                     <span>{dataBR(m.movedAt)}</span>
                   </div>
                   {#if m.notes}
                     <div class="meta-item">
-                      <i class="fas fa-comment"></i>
+                      <MessageSquare size={14} />
                       <span>{m.notes}</span>
                     </div>
                   {/if}
@@ -218,13 +242,13 @@
     {:else}
       <div class="empty-state">
         <div class="empty-icon">
-          <i class="fas fa-exchange-alt"></i>
+          <ArrowUpDown size={32} color="#94a3b8" />
         </div>
         <h3>Nenhuma movimentação encontrada</h3>
         <p>{busca || filtroTipo ? 'Tente ajustar os filtros de busca.' : 'Ainda não há movimentações registradas.'}</p>
         {#if canCreate() && !busca && !filtroTipo}
           <button class="btn-primary" on:click={() => goto('/estoque/movimentacoes/nova')}>
-            <i class="fas fa-plus"></i>
+            <Plus size={18} />
             Registrar Movimentação
           </button>
         {/if}
@@ -353,10 +377,6 @@
     pointer-events: none;
     z-index: 2;
     flex-shrink: 0;
-    width: 18px !important;
-    height: 18px !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   .search-input {
@@ -410,7 +430,8 @@
     color: #475569;
   }
 
-  .filter-item label i {
+  .filter-item label i,
+  .filter-item label :global(svg) {
     color: #3b82f6;
     font-size: 0.875rem;
   }
@@ -466,17 +487,10 @@
   }
 
   .loading-spinner {
-    width: 60px;
-    height: 60px;
-    border: 4px solid #e2e8f0;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 1.5rem;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
   }
 
   .loading-state p {
@@ -503,11 +517,6 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 1.5rem;
-  }
-
-  .error-icon i {
-    font-size: 2.5rem;
-    color: #ef4444;
   }
 
   .error-state h3 {
@@ -565,7 +574,8 @@
     margin: 0;
   }
 
-  .card-title i {
+  .card-title i,
+  .card-title :global(svg) {
     color: #3b82f6;
   }
 
@@ -599,17 +609,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
     flex-shrink: 0;
   }
 
   .movement-icon.type-entry {
     background: #d1fae5;
+  }
+
+  .movement-icon.type-entry :global(svg) {
     color: #059669;
   }
 
   .movement-icon.type-exit {
     background: #fee2e2;
+  }
+
+  .movement-icon.type-exit :global(svg) {
     color: #dc2626;
   }
 
@@ -664,7 +679,8 @@
     color: #64748b;
   }
 
-  .meta-item i {
+  .meta-item i,
+  .meta-item :global(svg) {
     color: #94a3b8;
     font-size: 0.875rem;
   }
@@ -696,11 +712,6 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 1.5rem;
-  }
-
-  .empty-icon i {
-    font-size: 2.5rem;
-    color: #94a3b8;
   }
 
   .empty-state h3 {
@@ -744,5 +755,30 @@
       align-items: flex-start;
       gap: 0.5rem;
     }
+  }
+
+  /* Ícones SVG */
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+  }
+
+  .search-icon {
+    color: #94a3b8;
+  }
+
+  .filter-item label :global(svg) {
+    color: #3b82f6;
+  }
+
+  .card-title :global(svg) {
+    color: #3b82f6;
+  }
+
+  .meta-item :global(svg) {
+    color: #94a3b8;
   }
 </style>

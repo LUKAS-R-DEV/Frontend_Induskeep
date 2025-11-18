@@ -1,8 +1,24 @@
 <script>
-  import {UserApi} from '$lib/api/users'
+  import { UserApi } from '$lib/api/users';
   import '$lib/styles/login.css';
   import { goto } from '$app/navigation';
   import { feedback } from '$lib/stores/feedback.stores.js';
+
+  // Ícones Lucide-Svelte
+  import {
+    Factory,
+    AlertCircle,
+    Mail,
+    Lock,
+    Eye,
+    EyeOff,
+    Loader2,
+    LogIn,
+    Key,
+    Cog,
+    Shield,
+    Wrench,
+  } from 'lucide-svelte';
 
   let email = '';
   let password = '';
@@ -21,25 +37,23 @@
 
     try {
       loading = true;
-      // Usa skipFeedback para evitar mostrar o feedback global de erro
-      // Vamos tratar o erro localmente na página
-      const data = await UserApi.login({email, password}, { skipFeedback: true });
+      const data = await UserApi.login({ email, password }, { skipFeedback: true });
+
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('permissions', JSON.stringify(data.permissions));
-      
+
       feedback.set({
         show: true,
         type: 'success',
         title: 'Login realizado!',
         message: 'Redirecionando...',
       });
-      
+
       setTimeout(() => {
         window.location.replace('/dashboard');
       }, 500);
     } catch (e) {
-      // Trata erros de autenticação com mensagens mais amigáveis
       if (e.status === 401) {
         error = 'E-mail ou senha incorretos. Verifique suas credenciais.';
       } else if (e.status === 400) {
@@ -59,7 +73,7 @@
     <div class="auth-header">
       <div class="logo-container">
         <div class="logo-icon">
-          <i class="fas fa-industry"></i>
+          <Factory size={28} color="white" />
         </div>
         <h1 class="logo-text">INDUSKEEP</h1>
       </div>
@@ -69,14 +83,14 @@
     <form on:submit|preventDefault={handleLogin} class="auth-form">
       {#if error}
         <div class="alert alert-error">
-          <i class="fas fa-exclamation-circle"></i>
+          <AlertCircle size={18} color="#ef4444" />
           <span>{error}</span>
         </div>
       {/if}
 
       <div class="form-group">
         <label for="email">
-          <i class="fas fa-envelope"></i>
+          <Mail size={16} />
           E-mail
         </label>
         <input 
@@ -92,7 +106,7 @@
 
       <div class="form-group">
         <label for="password">
-          <i class="fas fa-lock"></i>
+          <Lock size={16} />
           Senha
         </label>
         <div class="password-input-wrapper">
@@ -111,33 +125,58 @@
             on:click={() => showPassword = !showPassword}
             disabled={loading}
           >
-            <i class="fas fa-{showPassword ? 'eye-slash' : 'eye'}"></i>
+            {#if showPassword}
+              <EyeOff size={18} />
+            {:else}
+              <Eye size={18} />
+            {/if}
           </button>
         </div>
       </div>
 
       <button type="submit" class="btn btn-primary" disabled={loading}>
         {#if loading}
-          <i class="fas fa-spinner fa-spin"></i>
+          <Loader2 class="spin" size={18} />
           <span>Entrando...</span>
         {:else}
-          <i class="fas fa-sign-in-alt"></i>
+          <LogIn size={18} />
           <span>Entrar</span>
         {/if}
       </button>
 
       <div class="auth-footer">
         <a href="/recuperar-senha" class="link">
-          <i class="fas fa-key"></i>
+          <Key size={14} />
           Esqueceu sua senha?
         </a>
       </div>
     </form>
 
     <div class="auth-decorative">
-      <div class="decorative-circle circle-1"></div>
-      <div class="decorative-circle circle-2"></div>
-      <div class="decorative-circle circle-3"></div>
+      <Cog class="decorative-icon icon-1" size={40} />
+      <Shield class="decorative-icon icon-2" size={32} />
+      <Wrench class="decorative-icon icon-3" size={24} />
     </div>
   </div>
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+  }
+
+  .logo-icon {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3);
+  }
+</style>
