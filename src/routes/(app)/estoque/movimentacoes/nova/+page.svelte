@@ -41,8 +41,8 @@
   async function salvarMovimentacao(e) {
     e.preventDefault();
     
-    if (!pieceId || !quantity || !type) {
-      error = 'Por favor, preencha todos os campos obrigatórios.';
+    if (!pieceId || !quantity || !type || !notes || !notes.trim()) {
+      error = 'Por favor, preencha todos os campos obrigatórios, incluindo a observação.';
       feedback.set({
         show: true,
         type: 'error',
@@ -84,7 +84,7 @@
         pieceId,
         quantity: Number(quantity),
         type,
-        notes: notes || null,
+        notes: notes.trim(),
         userId: user?.id || null
       };
 
@@ -246,17 +246,18 @@
           <div class="form-group">
             <label for="notes">
               <i class="fas fa-comment"></i>
-              Observação
+              Observação *
             </label>
             <input
               id="notes"
               type="text"
               bind:value={notes}
               placeholder="Ex: Reposição semanal, uso em manutenção..."
+              required
               class="form-input"
               disabled={loading}
             />
-            <small class="form-hint">Informações adicionais sobre a movimentação</small>
+            <small class="form-hint">Informações sobre a movimentação (obrigatório)</small>
           </div>
         </div>
 
