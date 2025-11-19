@@ -4,6 +4,7 @@ import { apiFetch } from "./base.js";
 // ✅ export nomeado — precisa ser "export const DashboardApi"
 export const DashboardApi = {
   getData() {
-    return apiFetch("/dashboard");
+    // Usa skipFeedback porque a página já tem loading local
+    return apiFetch("/dashboard", { skipFeedback: true });
   },
 };

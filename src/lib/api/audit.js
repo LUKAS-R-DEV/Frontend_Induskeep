@@ -13,7 +13,8 @@ export const AuditApi = {
     const queryString = params.toString();
     const url = queryString ? `/audit?${queryString}` : '/audit';
     
-    return apiFetch(url);
+    // Usa skipFeedback porque a página já tem loading local
+    return apiFetch(url, { skipFeedback: true });
   },
 
   async purge(olderThan) {

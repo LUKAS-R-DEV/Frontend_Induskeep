@@ -2,7 +2,8 @@ import { apiFetch } from "./base";
 
 export const PieceApi = {
     list() {
-        return apiFetch("/pieces");
+        // Usa skipFeedback porque as páginas que usam já têm loading local
+        return apiFetch("/pieces", { skipFeedback: true });
     },
     get(id) {
         return apiFetch(`/pieces/${id}`);

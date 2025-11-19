@@ -3,7 +3,8 @@ import { apiFetch } from "./base.js";
 
 export const OrdersApi = {
   list() {
-    return apiFetch("/orders"); // rota do backend
+    // Usa skipFeedback porque a página já tem loading local
+    return apiFetch("/orders", { skipFeedback: true }); // rota do backend
   },
   get(id) {
     return apiFetch(`/orders/${id}`);

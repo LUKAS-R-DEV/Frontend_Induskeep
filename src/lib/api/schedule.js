@@ -2,7 +2,8 @@ import { apiFetch } from "./base";
 
 export const ScheduleApi={
     list() {
-        return apiFetch("/schedules");
+        // Usa skipFeedback porque a página já tem loading local
+        return apiFetch("/schedules", { skipFeedback: true });
     },
     create(data) {
         return apiFetch("/schedules", {

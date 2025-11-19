@@ -3,12 +3,14 @@ import { apiFetch } from "./base";
 export const NotificationsApi = {
   // 🔹 Lista notificações do usuário logado
   list() {
-    return apiFetch("/notifications");
+    // Usa skipFeedback porque a página já tem loading local
+    return apiFetch("/notifications", { skipFeedback: true });
   },
 
   // 🔹 Lista todas (somente admin)
   listAll() {
-    return apiFetch("/notifications/all");
+    // Usa skipFeedback porque a página já tem loading local
+    return apiFetch("/notifications/all", { skipFeedback: true });
   },
 
   // 🔹 Marca uma notificação como lida

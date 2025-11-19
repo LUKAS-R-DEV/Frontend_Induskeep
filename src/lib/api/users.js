@@ -2,10 +2,12 @@ import { apiFetch } from "./base.js";
 
 export const UserApi = {
   list() {
-    return apiFetch("/auth/users");
+    // Usa skipFeedback porque a página já tem loading local
+    return apiFetch("/auth/users", { skipFeedback: true });
   },
   listTechnicians() {
-    return apiFetch("/auth/technicians");
+    // Usa skipFeedback porque as páginas que usam já têm loading local
+    return apiFetch("/auth/technicians", { skipFeedback: true });
   },
   getProfile() {
     return apiFetch("/auth/me");
