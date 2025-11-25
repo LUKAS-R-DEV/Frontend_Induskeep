@@ -1,5 +1,4 @@
 import { createBasePDF, addFooter } from "../utils/pdfUtils.js";
-import { toCSV } from "../utils/csvUtils.js";
 import autoTable from "jspdf-autotable";
 
 export async function exportAnalytics(overview, charts, format = "pdf") {
@@ -21,16 +20,47 @@ function val(v, suffix = "") {
   return suffix ? `${v}${suffix}` : v;
 }
 
+function formatTime(hours) {
+  if (hours === null || hours === undefined || Number.isNaN(hours)) return "-";
+  if (hours === 0) return "0 h";
+  
+  // Se for menor que 1 hora, mostrar em minutos
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return minutes > 0 ? `${minutes} min` : "0 min";
+  }
+  
+  // Se for >= 24 horas, mostrar em dias
+  if (hours >= 24) {
+    const days = (hours / 24).toFixed(1);
+    return `${days} dias`;
+  }
+  
+  // Caso contrário, mostrar em horas com 1 casa decimal
+  return `${hours.toFixed(1)} h`;
+}
+
 function exportAnalyticsCSV(data) {
   const summary = [
-    "RESUMO DE ANÁLISE DE DESEMPENHO",
+    "RELATÓRIO DE INDICADORES DE DESEMPENHO (KPIs)",
+    "",
+    "RESUMO EXECUTIVO",
     `Total de Ordens de Serviço: ${val(data.totalOrders)}`,
     `Concluídas: ${val(data.completedOrders)}`,
+    `Pendentes: ${val(data.pendingOrders)}`,
+    `Em Andamento: ${val(data.inProgressOrders)}`,
     `Taxa de Conclusão: ${safeRate(data.completedOrders, data.totalOrders)}`,
-    `MTTR (Tempo Médio de Reparo): ${val(data.avgRepairTime, "h")}`,
-    `MTBF (Intervalo entre Falhas): ${val(data.avgFailureInterval, "h")}`,
+    "",
+    "MÉTRICAS DE TEMPO",
+    `MTTR (Tempo Médio de Reparo): ${formatTime(data.avgRepairTime)}`,
+    `MTBF (Intervalo Médio entre Falhas): ${formatTime(data.avgFailureInterval)}`,
+    "",
+    "RECURSOS",
     `Total de Máquinas: ${val(data.totalMachines)}`,
-    `Peças Usadas: ${val(data.totalPiecesUsed)}`,
+    `Total de Técnicos: ${val(data.totalTechnicians)}`,
+    `Agendamentos Atrasados: ${val(data.overdueSchedules)}`,
+    "",
+    "DETALHES",
     "",
   ];
 
@@ -38,17 +68,20 @@ function exportAnalyticsCSV(data) {
   const rows = [
     ["Total de OS", val(data.totalOrders)],
     ["Concluídas", val(data.completedOrders)],
+    ["Pendentes", val(data.pendingOrders)],
+    ["Em Andamento", val(data.inProgressOrders)],
     ["Taxa de Conclusão", safeRate(data.completedOrders, data.totalOrders)],
-    ["MTTR (Tempo Médio de Reparo)", val(data.avgRepairTime, "h")],
-    ["MTBF (Intervalo entre Falhas)", val(data.avgFailureInterval, "h")],
+    ["MTTR (Tempo Médio de Reparo)", formatTime(data.avgRepairTime)],
+    ["MTBF (Intervalo entre Falhas)", formatTime(data.avgFailureInterval)],
     ["Total de Máquinas", val(data.totalMachines)],
-    ["Peças Usadas", val(data.totalPiecesUsed)],
+    ["Total de Técnicos", val(data.totalTechnicians)],
+    ["Agendamentos Atrasados", val(data.overdueSchedules)],
   ];
 
   const csv = [
     ...summary,
     headers.join(";"),
-    ...rows.map(r => r.map(v => `"${v ?? ""}"`).join(";"))
+    ...rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"))
   ].join("\n");
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -56,49 +89,54 @@ function exportAnalyticsCSV(data) {
   const a = document.createElement("a");
   a.href = url;
   const dateStr = new Date().toISOString().split('T')[0];
-  a.download = `analise_desempenho_${dateStr}.csv`;
+  a.download = `relatorio_kpis_${dateStr}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 function exportAnalyticsPDF(overview, charts) {
-  const doc = createBasePDF("Análise de Desempenho");
+  const doc = createBasePDF("Relatório de Indicadores de Desempenho (KPIs)");
   
   // Cores profissionais
   const primaryColor = [37, 99, 235];
   const successColor = [16, 185, 129];
   const infoColor = [59, 130, 246];
   const warningColor = [245, 158, 11];
+  const dangerColor = [239, 68, 68];
 
   let startY = 120;
 
   // Título da seção
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setTextColor(...primaryColor);
   doc.text("Indicadores de Desempenho (KPIs)", 40, startY);
 
   startY += 30;
 
-  // Criar tabela de KPIs com estilo profissional
-  const kpiRows = [
+  // Seção: Ordens de Serviço
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(...primaryColor);
+  doc.text("Ordens de Serviço", 40, startY);
+  startY += 20;
+
+  const orderRows = [
     ["Total de Ordens de Serviço", val(overview.totalOrders)],
     ["Ordens Concluídas", val(overview.completedOrders)],
+    ["Ordens Pendentes", val(overview.pendingOrders)],
+    ["Ordens em Andamento", val(overview.inProgressOrders)],
     ["Taxa de Conclusão", safeRate(overview.completedOrders, overview.totalOrders)],
-    ["MTTR (Tempo Médio de Reparo)", val(overview.avgRepairTime, " horas")],
-    ["MTBF (Intervalo entre Falhas)", val(overview.avgFailureInterval, " horas")],
-    ["Total de Máquinas", val(overview.totalMachines)],
-    ["Peças Utilizadas", val(overview.totalPiecesUsed)],
   ];
 
   autoTable(doc, {
     startY: startY,
     head: [["Indicador", "Valor"]],
-    body: kpiRows,
+    body: orderRows,
     theme: "striped",
     styles: {
       fontSize: 10,
-      cellPadding: 8,
+      cellPadding: 7,
     },
     headStyles: {
       fillColor: primaryColor,
@@ -115,49 +153,87 @@ function exportAnalyticsPDF(overview, charts) {
     margin: { top: startY, left: 40, right: 40 },
   });
 
-  // Calcular próxima posição Y após a tabela
-  const finalY = doc.lastAutoTable.finalY || startY + 200;
-  let y = finalY + 30;
+  // Seção: Métricas de Tempo
+  const finalY = doc.lastAutoTable.finalY || startY + 100;
+  startY = finalY + 25;
 
-  // Seção de Gráficos (se disponíveis)
-  const chartIds = ["maintHistoryChart", "topEquipChart", "maintTypeChart"];
-  let chartAdded = false;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(...primaryColor);
+  doc.text("Métricas de Tempo", 40, startY);
+  startY += 20;
 
-  for (const id of chartIds) {
-    const chart = charts && charts[id];
-    if (!chart || typeof chart.getDataURL !== "function") continue;
-    
-    if (!chartAdded) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(...primaryColor);
-      doc.text("Análises Gráficas", 40, y);
-      y += 25;
-      chartAdded = true;
-    }
+  const timeRows = [
+    ["MTTR (Tempo Médio de Reparo)", formatTime(overview.avgRepairTime)],
+    ["MTBF (Intervalo Médio entre Falhas)", formatTime(overview.avgFailureInterval)],
+  ];
 
-    try {
-      const img = chart.getDataURL({ 
-        pixelRatio: 2, 
-        backgroundColor: "#ffffff", 
-        type: "png" 
-      });
-      if (img) {
-        // Verificar se há espaço na página
-        if (y + 250 > 750) {
-          doc.addPage();
-          y = 40;
-        }
-        doc.addImage(img, "PNG", 40, y, 500, 200);
-        y += 220;
-      }
-    } catch (e) {
-      console.error(`Erro ao exportar gráfico ${id}:`, e);
-    }
-  }
+  autoTable(doc, {
+    startY: startY,
+    head: [["Indicador", "Valor"]],
+    body: timeRows,
+    theme: "striped",
+    styles: {
+      fontSize: 10,
+      cellPadding: 7,
+    },
+    headStyles: {
+      fillColor: infoColor,
+      textColor: 255,
+      halign: "left",
+      fontStyle: "bold",
+      fontSize: 11,
+    },
+    columnStyles: {
+      0: { cellWidth: 200, fontStyle: "bold" },
+      1: { cellWidth: 150, halign: "right" },
+    },
+    alternateRowStyles: { fillColor: [249, 250, 251] },
+    margin: { top: startY, left: 40, right: 40 },
+  });
+
+  // Seção: Recursos
+  const finalY2 = doc.lastAutoTable.finalY || startY + 100;
+  startY = finalY2 + 25;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(...primaryColor);
+  doc.text("Recursos", 40, startY);
+  startY += 20;
+
+  const resourceRows = [
+    ["Total de Máquinas", val(overview.totalMachines)],
+    ["Total de Técnicos", val(overview.totalTechnicians)],
+    ["Agendamentos Atrasados", val(overview.overdueSchedules)],
+  ];
+
+  autoTable(doc, {
+    startY: startY,
+    head: [["Indicador", "Valor"]],
+    body: resourceRows,
+    theme: "striped",
+    styles: {
+      fontSize: 10,
+      cellPadding: 7,
+    },
+    headStyles: {
+      fillColor: successColor,
+      textColor: 255,
+      halign: "left",
+      fontStyle: "bold",
+      fontSize: 11,
+    },
+    columnStyles: {
+      0: { cellWidth: 200, fontStyle: "bold" },
+      1: { cellWidth: 150, halign: "right" },
+    },
+    alternateRowStyles: { fillColor: [249, 250, 251] },
+    margin: { top: startY, left: 40, right: 40 },
+  });
 
   addFooter(doc);
   
   const dateStr = new Date().toISOString().split('T')[0];
-  doc.save(`analise_desempenho_${dateStr}.pdf`);
+  doc.save(`relatorio_kpis_${dateStr}.pdf`);
 }

@@ -1,4 +1,4 @@
-import { createBasePDF, addFooter } from "../utils/pdfUtils.js";
+import { createBasePDF, addFooter, drawRoundedRect } from "../utils/pdfUtils.js";
 import { toCSV } from "../utils/csvUtils.js";
 import autoTable from "jspdf-autotable";
 
@@ -102,7 +102,7 @@ function exportUsersPDF(rows, stats) {
 
   // Box 1: Total
   doc.setFillColor(245, 247, 250);
-  doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...primaryColor);
@@ -114,7 +114,7 @@ function exportUsersPDF(rows, stats) {
 
   // Box 2: Ativos
   doc.setFillColor(236, 253, 245);
-  doc.roundedRect(boxX + boxWidth + 10, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + boxWidth + 10, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...successColor);
@@ -126,7 +126,7 @@ function exportUsersPDF(rows, stats) {
 
   // Box 3: Inativos
   doc.setFillColor(254, 242, 242);
-  doc.roundedRect(boxX + (boxWidth + 10) * 2, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + (boxWidth + 10) * 2, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...dangerColor);
@@ -138,7 +138,7 @@ function exportUsersPDF(rows, stats) {
 
   // Box 4: Por Função
   doc.setFillColor(239, 246, 255);
-  doc.roundedRect(boxX + (boxWidth + 10) * 3, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + (boxWidth + 10) * 3, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...infoColor);

@@ -1,6 +1,16 @@
 import { jsPDF } from "jspdf";
 const LOGO = null;
 
+// Função auxiliar para desenhar retângulo arredondado (usando rect simples como fallback)
+export function drawRoundedRect(doc, x, y, width, height, radius, fill = false) {
+  // Usar rect simples pois roundedRect não está disponível no jsPDF padrão
+  if (fill) {
+    doc.rect(x, y, width, height, "F");
+  } else {
+    doc.rect(x, y, width, height);
+  }
+}
+
 export function createBasePDF(title) {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
 

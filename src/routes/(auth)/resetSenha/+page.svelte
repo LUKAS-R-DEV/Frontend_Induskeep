@@ -5,6 +5,19 @@
   import { page } from "$app/stores";
   import { AuthApi } from "$lib/api/auth";
   import { feedback } from '$lib/stores/feedback.stores.js';
+  import {
+    Lock,
+    Key,
+    Eye,
+    EyeOff,
+    CheckCircle2,
+    XCircle,
+    AlertCircle,
+    Loader2,
+    Check,
+    ArrowLeft,
+    LockKeyhole,
+  } from 'lucide-svelte';
 
   let token = "";
   let newPassword = "";
@@ -133,7 +146,7 @@
     <div class="auth-header">
       <div class="logo-container">
         <div class="logo-icon">
-          <i class="fas fa-lock"></i>
+          <LockKeyhole size={28} color="white" />
         </div>
         <h1 class="logo-text">INDUSKEEP</h1>
       </div>
@@ -146,14 +159,14 @@
     <form on:submit={handleSubmit} class="auth-form">
       {#if error}
         <div class="alert alert-error">
-          <i class="fas fa-exclamation-circle"></i>
+          <AlertCircle size={18} color="#ef4444" />
           <span>{error}</span>
         </div>
       {/if}
 
       <div class="form-group">
         <label for="newPassword">
-          <i class="fas fa-key"></i>
+          <Key size={16} />
           Nova Senha
         </label>
         <div class="password-input-wrapper">
@@ -173,7 +186,11 @@
             on:click={() => showPassword = !showPassword}
             disabled={loading || !token}
           >
-            <i class="fas fa-{showPassword ? 'eye-slash' : 'eye'}"></i>
+            {#if showPassword}
+              <EyeOff size={18} />
+            {:else}
+              <Eye size={18} />
+            {/if}
           </button>
         </div>
         {#if newPassword}
@@ -193,7 +210,7 @@
 
       <div class="form-group">
         <label for="confirmPassword">
-          <i class="fas fa-check-double"></i>
+          <Lock size={16} />
           Confirmar Nova Senha
         </label>
         <div class="password-input-wrapper">
@@ -213,17 +230,21 @@
             on:click={() => showConfirmPassword = !showConfirmPassword}
             disabled={loading || !token}
           >
-            <i class="fas fa-{showConfirmPassword ? 'eye-slash' : 'eye'}"></i>
+            {#if showConfirmPassword}
+              <EyeOff size={18} />
+            {:else}
+              <Eye size={18} />
+            {/if}
           </button>
         </div>
         {#if confirmPassword && newPassword !== confirmPassword}
           <p class="password-hint error">
-            <i class="fas fa-times-circle"></i>
+            <XCircle size={16} />
             As senhas não coincidem
           </p>
         {:else if confirmPassword && newPassword === confirmPassword}
           <p class="password-hint success">
-            <i class="fas fa-check-circle"></i>
+            <CheckCircle2 size={16} />
             As senhas coincidem
           </p>
         {/if}
@@ -231,26 +252,42 @@
 
       <button type="submit" class="btn btn-primary" disabled={loading || !token}>
         {#if loading}
-          <i class="fas fa-spinner fa-spin"></i>
+          <Loader2 class="spin" size={18} />
           <span>Redefinindo...</span>
         {:else}
-          <i class="fas fa-check"></i>
+          <Check size={18} />
           <span>Redefinir Senha</span>
         {/if}
       </button>
 
       <div class="auth-footer">
         <button type="button" class="btn btn-secondary" on:click={() => goto('/login')} disabled={loading}>
-          <i class="fas fa-arrow-left"></i>
+          <ArrowLeft size={18} />
           <span>Voltar para Login</span>
         </button>
       </div>
     </form>
-
-    <div class="auth-decorative">
-      <div class="decorative-circle circle-1"></div>
-      <div class="decorative-circle circle-2"></div>
-      <div class="decorative-circle circle-3"></div>
-    </div>
   </div>
 </div>
+
+<style>
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  svg {
+    vertical-align: middle;
+    stroke-width: 2;
+  }
+
+  .logo-icon {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3);
+  }
+
+</style>

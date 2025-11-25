@@ -204,6 +204,17 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
+.metric-card.overdue {
+  border-color: #fecaca;
+  background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+}
+
+.metric-card.overdue:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
 .metric-icon {
   width: 60px;
   height: 60px;

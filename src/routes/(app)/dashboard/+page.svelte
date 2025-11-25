@@ -19,6 +19,7 @@
     Box,
     ArrowRight,
     Plus,
+    CalendarX,
   } from 'lucide-svelte';
 
   let data = null;
@@ -136,23 +137,6 @@
         </div>
       </div>
 
-      <div class="metric-card completed">
-        <div class="metric-icon success">
-          <CheckCircle2 size={26} color="white" />
-        </div>
-        <div class="metric-content">
-          <h3 class="metric-label">Concluídas</h3>
-          <div class="metric-value">{data.sumary?.completedOrders ?? 0}</div>
-          <p class="metric-description">
-            {#if user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN'}
-              Minhas ordens finalizadas
-            {:else}
-              Ordens finalizadas
-            {/if}
-          </p>
-        </div>
-      </div>
-
       {#if isSupervisorOrAdmin(user?.role)}
         <div class="metric-card critical">
           <div class="metric-icon danger">
@@ -162,6 +146,17 @@
             <h3 class="metric-label">Estoque Crítico</h3>
             <div class="metric-value">{data.lowStockPieces?.length ?? 0}</div>
             <p class="metric-description">Peças em alerta</p>
+          </div>
+        </div>
+
+        <div class="metric-card overdue" on:click={() => goto('/agendamentos')} style="cursor: pointer;">
+          <div class="metric-icon danger">
+            <CalendarX size={26} color="white" />
+          </div>
+          <div class="metric-content">
+            <h3 class="metric-label">Agendamentos Atrasados</h3>
+            <div class="metric-value">{data.sumary?.overdueSchedules ?? 0}</div>
+            <p class="metric-description">Manutenções pendentes</p>
           </div>
         </div>
       {/if}

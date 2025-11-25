@@ -1,5 +1,4 @@
-import { createBasePDF, addFooter } from "../utils/pdfUtils.js";
-import { toCSV } from "../utils/csvUtils.js";
+import { createBasePDF, addFooter, drawRoundedRect } from "../utils/pdfUtils.js";
 import { formatDate, formatStatus } from "../utils/formatters.js";
 import autoTable from "jspdf-autotable";
 
@@ -10,20 +9,31 @@ export async function exportReports(data, format = "pdf") {
 }
 
 function normalizeData(list) {
-  const rows = (list || []).map((r) => {
-    // history shape: { completedAt, notes, order:{ title,status, user:{name}, machine:{name} } }
-    // order shape: { title,status, createdAt, history:{ completedAt, notes }, user:{name}, machine:{name} }
-    const order = r.order || r;
+  // Garantir que estamos trabalhando com array de ordens
+  const orders = Array.isArray(list) ? list : [];
+  
+  const rows = orders.map((order) => {
+    // Extrair informações da ordem
     const machineName = order?.machine?.name || "-";
     const userName = order?.user?.name || "-";
     const title = order?.title || "-";
-    const status = order?.status || "-";
-    const notes = r?.notes || order?.history?.notes || order?.description || "-";
-    const completedAt = r?.completedAt || order?.history?.completedAt || null;
+    const status = order?.status || "PENDING";
+    const description = order?.description || "";
+    
+    // Para ordens concluídas, usar completedAt do history, senão usar createdAt
+    const completedAt = order?.history?.completedAt || null;
     const createdAt = order?.createdAt || null;
     
+    // Observações: priorizar notes do history, senão description
+    const notes = order?.history?.notes || description || "-";
+    
+    // Data a ser exibida: se concluída, mostrar completedAt, senão createdAt
+    const displayDate = completedAt || createdAt;
+    
     return {
-      data: formatDate(completedAt || createdAt),
+      data: formatDate(displayDate),
+      dataCriacao: formatDate(createdAt),
+      dataConclusao: completedAt ? formatDate(completedAt) : "-",
       maquina: machineName,
       tecnico: userName,
       titulo: title,
@@ -31,14 +41,23 @@ function normalizeData(list) {
       statusFormatado: formatStatus(status),
       notas: notes || "-",
       rawStatus: status,
+      createdAt: createdAt, // Para ordenação
     };
+  });
+
+  // Ordenar por data de criação (mais recente primeiro)
+  rows.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
   });
 
   // Calcular estatísticas
   const stats = {
     total: rows.length,
     concluidas: rows.filter(r => r.rawStatus === "COMPLETED").length,
-    pendentes: rows.filter(r => r.rawStatus === "PENDING" || r.rawStatus === "IN_PROGRESS").length,
+    pendentes: rows.filter(r => r.rawStatus === "PENDING").length,
+    emAndamento: rows.filter(r => r.rawStatus === "IN_PROGRESS").length,
     canceladas: rows.filter(r => r.rawStatus === "CANCELLED" || r.rawStatus === "CANCELED").length,
     maquinasUnicas: new Set(rows.map(r => r.maquina).filter(m => m !== "-")).size,
     tecnicosUnicos: new Set(rows.map(r => r.tecnico).filter(t => t !== "-")).size,
@@ -48,28 +67,33 @@ function normalizeData(list) {
 }
 
 function exportReportsCSV(rows, stats) {
-  const headers = ["Data", "Máquina", "Técnico", "Título", "Status", "Notas"];
+  const headers = ["Data", "Máquina", "Técnico", "Título", "Status", "Observações"];
   const csvRows = rows.map(r => [
     r.data,
     r.maquina,
     r.tecnico,
     r.titulo,
-    r.statusFormatado,
+    r.statusFormatado.replace(/✅|🕓|⚙️|❌/g, "").trim(),
     r.notas,
   ]);
   
   // Adicionar resumo no início do CSV
   const summary = [
-    "RESUMO DO RELATÓRIO",
-    `Total de Manutenções: ${stats.total}`,
+    "RELATÓRIO DE ORDENS DE SERVIÇO POR PERÍODO",
+    "",
+    "RESUMO",
+    `Total de Ordens de Serviço: ${stats.total}`,
     `Concluídas: ${stats.concluidas}`,
     `Pendentes: ${stats.pendentes}`,
+    `Em Andamento: ${stats.emAndamento}`,
     `Canceladas: ${stats.canceladas}`,
-    `Máquinas: ${stats.maquinasUnicas}`,
-    `Técnicos: ${stats.tecnicosUnicos}`,
+    `Máquinas Envolvidas: ${stats.maquinasUnicas}`,
+    `Técnicos Envolvidos: ${stats.tecnicosUnicos}`,
     "",
-    ...headers.join(";"),
-    ...csvRows.map(r => r.map(v => `"${v ?? ""}"`).join(";"))
+    "DETALHES",
+    "",
+    headers.join(";"),
+    ...csvRows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"))
   ];
 
   const csv = summary.join("\n");
@@ -78,82 +102,104 @@ function exportReportsCSV(rows, stats) {
   const a = document.createElement("a");
   a.href = url;
   const dateStr = new Date().toISOString().split('T')[0];
-  a.download = `relatorio_manutencoes_${dateStr}.csv`;
+  a.download = `relatorio_os_periodo_${dateStr}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 function exportReportsPDF(rows, stats) {
-  const doc = createBasePDF("Relatório de Manutenções");
+  const doc = createBasePDF("Relatório de Ordens de Serviço por Período");
   
   // Cores profissionais
   const primaryColor = [37, 99, 235]; // Azul
   const successColor = [16, 185, 129]; // Verde
   const warningColor = [245, 158, 11]; // Amarelo
   const dangerColor = [239, 68, 68]; // Vermelho
-  const grayColor = [107, 114, 128]; // Cinza
+  const infoColor = [59, 130, 246]; // Azul claro
 
   // Seção de Resumo Executivo
   let startY = 120;
   
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setTextColor(...primaryColor);
   doc.text("Resumo Executivo", 40, startY);
   
-  startY += 25;
+  startY += 30;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
   
-  // Box de estatísticas
-  const boxWidth = 160;
-  const boxHeight = 80;
+  // Box de estatísticas - 4 boxes em linha
+  const boxWidth = 120;
+  const boxHeight = 75;
   const boxX = 40;
   const boxY = startY;
+  const boxSpacing = 10;
   
   // Box 1: Total
   doc.setFillColor(245, 247, 250);
-  doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   doc.setTextColor(...primaryColor);
   doc.text(stats.total.toString(), boxX + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Total de Manutenções", boxX + 10, boxY + 35);
+  doc.text("Total de OS", boxX + 10, boxY + 40);
   
   // Box 2: Concluídas
   doc.setFillColor(236, 253, 245);
-  doc.roundedRect(boxX + boxWidth + 10, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + boxWidth + boxSpacing, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   doc.setTextColor(...successColor);
-  doc.text(stats.concluidas.toString(), boxX + boxWidth + 20, boxY + 25);
+  doc.text(stats.concluidas.toString(), boxX + boxWidth + boxSpacing + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Concluídas", boxX + boxWidth + 20, boxY + 35);
+  doc.text("Concluídas", boxX + boxWidth + boxSpacing + 10, boxY + 40);
   
   // Box 3: Pendentes
   doc.setFillColor(255, 251, 235);
-  doc.roundedRect(boxX + (boxWidth + 10) * 2, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + (boxWidth + boxSpacing) * 2, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   doc.setTextColor(...warningColor);
-  doc.text(stats.pendentes.toString(), boxX + (boxWidth + 10) * 2 + 10, boxY + 25);
+  doc.text(stats.pendentes.toString(), boxX + (boxWidth + boxSpacing) * 2 + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Pendentes", boxX + (boxWidth + 10) * 2 + 10, boxY + 35);
+  doc.text("Pendentes", boxX + (boxWidth + boxSpacing) * 2 + 10, boxY + 40);
+  
+  // Box 4: Em Andamento
+  doc.setFillColor(239, 246, 255);
+  drawRoundedRect(doc, boxX + (boxWidth + boxSpacing) * 3, boxY, boxWidth, boxHeight, 3, true);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(...infoColor);
+  doc.text(stats.emAndamento.toString(), boxX + (boxWidth + boxSpacing) * 3 + 10, boxY + 25);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Em Andamento", boxX + (boxWidth + boxSpacing) * 3 + 10, boxY + 40);
   
   // Informações adicionais
-  startY += boxHeight + 20;
+  startY += boxHeight + 25;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Máquinas envolvidas: ${stats.maquinasUnicas} | Técnicos: ${stats.tecnicosUnicos}`, 40, startY);
+  
+  const infoParts = [
+    `Máquinas: ${stats.maquinasUnicas}`,
+    `Técnicos: ${stats.tecnicosUnicos}`
+  ];
+  if (stats.canceladas > 0) {
+    infoParts.push(`Canceladas: ${stats.canceladas}`);
+  }
+  
+  doc.text(infoParts.join(" | "), 40, startY);
   
   // Linha separadora
   startY += 15;
@@ -169,8 +215,14 @@ function exportReportsPDF(rows, stats) {
     const statusClean = r.statusFormatado
       .replace(/✅/g, "")
       .replace(/🕓/g, "")
+      .replace(/⚙️/g, "")
       .replace(/❌/g, "")
       .trim();
+    
+    // Limitar tamanho das observações
+    const notas = r.notas && r.notas.length > 60 
+      ? r.notas.substring(0, 57) + "..." 
+      : (r.notas || "-");
     
     return [
       r.data,
@@ -178,7 +230,7 @@ function exportReportsPDF(rows, stats) {
       r.tecnico,
       r.titulo,
       statusClean,
-      r.notas.length > 50 ? r.notas.substring(0, 47) + "..." : r.notas,
+      notas,
     ];
   });
 
@@ -189,7 +241,7 @@ function exportReportsPDF(rows, stats) {
     theme: "striped",
     styles: { 
       fontSize: 8, 
-      cellPadding: 5,
+      cellPadding: 4,
       overflow: "linebreak",
       cellWidth: "wrap",
     },
@@ -201,12 +253,12 @@ function exportReportsPDF(rows, stats) {
       fontSize: 9,
     },
     columnStyles: {
-      0: { cellWidth: 80, halign: "center" }, // Data
+      0: { cellWidth: 75, halign: "center" }, // Data
       1: { cellWidth: 100 }, // Máquina
       2: { cellWidth: 90 }, // Técnico
       3: { cellWidth: 120 }, // Título
-      4: { cellWidth: 70, halign: "center" }, // Status
-      5: { cellWidth: 90 }, // Observações
+      4: { cellWidth: 65, halign: "center" }, // Status
+      5: { cellWidth: 100 }, // Observações
     },
     alternateRowStyles: { fillColor: [249, 250, 251] },
     margin: { top: startY, left: 40, right: 40 },
@@ -217,5 +269,5 @@ function exportReportsPDF(rows, stats) {
   
   // Salvar arquivo
   const dateStr = new Date().toISOString().split('T')[0];
-  doc.save(`relatorio_manutencoes_${dateStr}.pdf`);
+  doc.save(`relatorio_os_periodo_${dateStr}.pdf`);
 }

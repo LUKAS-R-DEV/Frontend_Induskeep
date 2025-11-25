@@ -45,7 +45,34 @@
     loading = true;
     error = '';
 
-    // Validações
+    // Validação de campos obrigatórios
+    if (!name || !name.trim() || !email || !email.trim() || !role) {
+      error = 'Por favor, preencha todos os campos obrigatórios (Nome, Email e Perfil).';
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Campos obrigatórios',
+        message: error,
+      });
+      loading = false;
+      return;
+    }
+
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      error = 'Por favor, informe um email válido.';
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Email inválido',
+        message: error,
+      });
+      loading = false;
+      return;
+    }
+
+    // Validações de senha (se preenchida)
     if (password && password.length < 6) {
       error = 'A senha deve ter pelo menos 6 caracteres.';
       feedback.set({

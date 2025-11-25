@@ -117,7 +117,7 @@
 
   async function exportarGeral() {
     try {
-      await ExportFactory.reports(historico, 'pdf');
+      await ExportFactory.history(historico, 'pdf');
       feedback.set({
         show: true,
         type: 'success',

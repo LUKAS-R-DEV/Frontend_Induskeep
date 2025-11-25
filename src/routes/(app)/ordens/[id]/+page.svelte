@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { OrdersApi } from '$lib/api/orders';
   import { HistoryApi } from '$lib/api/history';
+  import { OrderItemsApi } from '$lib/api/orderItems';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { feedback } from '$lib/stores/feedback.stores.js';
@@ -14,6 +15,8 @@
   let error = '';
   let user = null;
   let history = [];
+  let orderItems = [];
+  let loadingItems = false;
 
   const statusLabels = {
     PENDING: 'Pendente',
@@ -37,26 +40,117 @@
   };
 
   onMount(async () => {
+    console.log('🚀 [Frontend] Página de detalhes montada!');
+    console.log('🚀 [Frontend] URL atual:', typeof window !== 'undefined' ? window.location.href : 'N/A');
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem('user');
         if (stored) {
           user = JSON.parse(stored);
+          console.log('👤 [Frontend] Usuário carregado:', { id: user?.id, role: user?.role });
         }
       }
 
       id = $page.params.id;
-      if (!id) {
+      console.log('🔍 [Frontend] Parâmetros da página:', { 
+        params: $page.params, 
+        id,
+        idType: typeof id,
+        idLength: id?.length 
+      });
+      
+      if (!id || id.trim().length === 0) {
+        console.error('❌ [Frontend] ID da ordem não fornecido');
         throw new Error('ID da ordem não fornecido');
       }
 
+      // Limpa o ID (remove aspas e espaços)
+      id = String(id).replace(/['"]+/g, "").trim();
+      
+      if (id.length < 30) {
+        console.error('❌ [Frontend] ID muito curto, formato inválido:', id);
+        throw new Error('Formato de ID inválido');
+      }
+
       // Carrega dados da ordem
-      ordem = await OrdersApi.get(id);
+      console.log('🔍 [Frontend] Tentando carregar ordem:', id);
+      try {
+        ordem = await OrdersApi.get(id);
+        console.log('✅ [Frontend] Ordem carregada:', ordem ? {
+          id: ordem.id,
+          status: ordem.status,
+          title: ordem.title
+        } : 'Não');
+      } catch (apiError) {
+        console.error('❌ [Frontend] Erro na API ao carregar ordem:', {
+          message: apiError?.message,
+          status: apiError?.status,
+          response: apiError?.response,
+          stack: apiError?.stack
+        });
+        
+        // Se for erro 403 (permissão), mostra mensagem específica
+        if (apiError?.status === 403 || apiError?.response?.status === 403) {
+          error = 'Você não tem permissão para visualizar esta ordem de serviço.';
+          feedback.set({
+            show: true,
+            type: 'error',
+            title: 'Acesso Negado',
+            message: error,
+          });
+          setTimeout(() => {
+            goto('/ordens');
+          }, 2000);
+          loading = false;
+          return;
+        }
+        // Se for erro 404, mostra mensagem específica
+        if (apiError?.status === 404 || apiError?.response?.status === 404) {
+          error = 'Ordem de serviço não encontrada.';
+          feedback.set({
+            show: true,
+            type: 'error',
+            title: 'Não Encontrada',
+            message: error,
+          });
+          setTimeout(() => {
+            goto('/ordens');
+          }, 2000);
+          loading = false;
+          return;
+        }
+        // Para outros erros, propaga
+        throw apiError;
+      }
+      
+      if (!ordem) {
+        console.error('❌ [Frontend] Ordem retornada é null/undefined');
+        throw new Error('Ordem não encontrada');
+      }
       
       // Carrega histórico e constrói timeline
-      await buildTimeline();
+      try {
+        await buildTimeline();
+      } catch (timelineError) {
+        console.error('Erro ao carregar timeline (não crítico):', timelineError);
+        // Continua mesmo se a timeline falhar
+      }
+      
+      // Carrega peças utilizadas (apenas se ordem estiver concluída)
+      // Faz isso de forma assíncrona para não bloquear o carregamento da página
+      if (ordem && ordem.status === 'COMPLETED') {
+        loadOrderItems().catch(err => {
+          console.error('Erro ao carregar peças (não crítico):', err);
+          // Não mostra erro para o usuário, apenas loga
+        });
+      }
     } catch (e) {
       console.error('Erro ao carregar ordem:', e);
+      console.error('Detalhes do erro:', {
+        message: e?.message,
+        status: e?.status,
+        response: e?.response
+      });
       error = e?.message || 'Falha ao carregar os detalhes da ordem de serviço.';
       feedback.set({
         show: true,
@@ -116,6 +210,25 @@
   }
 
   // Função auxiliar para construir a timeline
+  async function loadOrderItems() {
+    try {
+      loadingItems = true;
+      // Só carrega peças se a ordem estiver concluída
+      if (ordem && ordem.status === 'COMPLETED') {
+        const items = await OrderItemsApi.findByOrder(id);
+        orderItems = Array.isArray(items) ? items : [];
+      } else {
+        orderItems = [];
+      }
+    } catch (e) {
+      console.error('Erro ao carregar peças utilizadas:', e);
+      // Não mostra erro para o usuário, apenas loga
+      orderItems = [];
+    } finally {
+      loadingItems = false;
+    }
+  }
+
   async function buildTimeline() {
     if (!ordem) return;
     
@@ -261,15 +374,11 @@
     if (!ordem || !user) return false;
     // Apenas técnicos podem concluir ordens
     const userRole = String(user.role || '').toUpperCase().trim();
-    if (userRole !== 'TECHNICIAN') {
-      return false;
-    }
+    if (userRole !== 'TECHNICIAN') return false;
     // Técnico só pode concluir ordens atribuídas a ele
-    if (ordem.userId !== user.id) {
-      return false;
-    }
-    // Permite concluir novamente mesmo se já estiver concluída (para reabertura)
-    return ordem.status !== 'CANCELLED';
+    if (ordem.userId !== user.id) return false;
+    // OBRIGATÓRIO: Apenas ordens em execução podem ser concluídas
+    return ordem.status === 'IN_PROGRESS';
   }
 
   function canStart() {
@@ -294,12 +403,12 @@
       return false;
     }
     const userRole = String(user.role || '').toUpperCase().trim();
-    // Técnico pode pausar apenas ordens atribuídas a ele que estejam em andamento
+    // Apenas técnicos podem pausar ordens atribuídas a eles que estejam em andamento
     if (userRole === 'TECHNICIAN') {
       return ordem.userId === user.id && ordem.status === 'IN_PROGRESS';
     }
-    // Supervisor e admin podem pausar qualquer ordem em andamento
-    return ordem.status === 'IN_PROGRESS';
+    // Supervisores e admins não podem pausar ordens, apenas cancelar
+    return false;
   }
 
   async function startOrder() {
@@ -378,52 +487,6 @@
     }
   }
 
-  async function completeOrder() {
-    try {
-      const confirmed = await new Promise((resolve) => {
-        feedback.set({
-          show: true,
-          type: 'confirm',
-          title: 'Concluir ordem',
-          message: ordem.status === 'COMPLETED' 
-            ? 'Esta ordem já foi concluída anteriormente. Deseja concluí-la novamente? Isso criará um novo registro no histórico.'
-            : 'Deseja marcar esta ordem de serviço como concluída?',
-          confirmCallback: () => resolve(true)
-        });
-      });
-
-      if (!confirmed) return;
-
-      await HistoryApi.create({
-        orderId: id,
-        notes: ordem.status === 'COMPLETED' 
-          ? 'Ordem reaberta e concluída novamente'
-          : 'Ordem de serviço concluída pelo sistema'
-      });
-
-      // Recarrega os dados da ordem para atualizar o status
-      ordem = await OrdersApi.get(id);
-      
-      // Reconstrói a timeline com os dados atualizados
-      await buildTimeline();
-
-      feedback.set({
-        show: true,
-        type: 'success',
-        title: 'Sucesso',
-        message: ordem.status === 'COMPLETED' 
-          ? 'Ordem concluída novamente com sucesso.'
-          : 'Ordem de serviço concluída com sucesso.',
-      });
-    } catch (e) {
-      feedback.set({
-        show: true,
-        type: 'error',
-        title: 'Erro',
-        message: e?.message || 'Falha ao concluir a ordem de serviço.',
-      });
-    }
-  }
 </script>
 
 <div class="order-detail-container">
@@ -453,6 +516,9 @@
         <i class="fas fa-spinner fa-spin"></i>
       </div>
       <p>Carregando detalhes da ordem...</p>
+      <p style="font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
+        ID: {id || 'N/A'}
+      </p>
     </div>
   {:else if error || !ordem}
     <div class="error-state">
@@ -590,6 +656,58 @@
             <p class="description-text">{ordem.description || 'Sem descrição disponível.'}</p>
           </div>
         </div>
+
+        <!-- Peças Utilizadas Card -->
+        {#if ordem.status === 'COMPLETED'}
+          <div class="detail-card">
+            <div class="card-header">
+              <h3 class="card-title">
+                <i class="fas fa-cog"></i>
+                Peças Utilizadas
+              </h3>
+            </div>
+            <div class="card-content">
+              {#if loadingItems}
+                <div class="loading-items">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <span>Carregando peças...</span>
+                </div>
+              {:else if orderItems.length > 0}
+                <div class="pieces-list">
+                  {#each orderItems as item}
+                    <div class="piece-item">
+                      <div class="piece-info">
+                        <div class="piece-name">
+                          <i class="fas fa-box"></i>
+                          <strong>{item.piece?.name || 'Peça não encontrada'}</strong>
+                        </div>
+                        <div class="piece-details">
+                          <span class="piece-code">
+                            <i class="fas fa-barcode"></i>
+                            {item.piece?.code || 'N/A'}
+                          </span>
+                          <span class="piece-quantity">
+                            <i class="fas fa-hashtag"></i>
+                            Quantidade: {item.quantity}
+                          </span>
+                        </div>
+                        <div class="piece-date">
+                          <i class="fas fa-calendar"></i>
+                          Utilizada em: {formatDate(item.usedAt)}
+                        </div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="empty-pieces">
+                  <i class="fas fa-info-circle"></i>
+                  <span>Nenhuma peça foi registrada para esta ordem.</span>
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
       </div>
 
       <!-- Right Column -->
@@ -684,11 +802,11 @@
                 {#if canComplete()}
                   <button 
                     class="quick-action-btn success" 
-                    on:click={completeOrder}
-                    title={ordem.status === 'COMPLETED' ? 'Concluir novamente' : 'Concluir ordem'}
+                    on:click={() => goto(`/ordens/${ordem.id}/concluir`)}
+                    title="Concluir ordem em execução"
                   >
                     <i class="fas fa-check-circle"></i>
-                    <span>{ordem.status === 'COMPLETED' ? 'Concluir Novamente' : 'Concluir Ordem'}</span>
+                    <span>Concluir Ordem</span>
                   </button>
                 {/if}
                 {#if canUpdate()}
@@ -718,11 +836,13 @@
   {/if}
 </div>
 
+
 <style>
   .order-detail-container {
     padding: 2rem;
     max-width: 1400px;
     margin: 0 auto;
+    position: relative;
   }
 
   .order-header-card {
@@ -1045,6 +1165,106 @@
     margin-top: 0.5rem;
   }
 
+  .loading-items {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    color: #64748b;
+    font-size: 0.95rem;
+  }
+
+  .pieces-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .piece-item {
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .piece-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+
+  .piece-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .piece-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    color: #1e293b;
+  }
+
+  .piece-name i {
+    color: #3b82f6;
+  }
+
+  .piece-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  .piece-code,
+  .piece-quantity {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: #64748b;
+  }
+
+  .piece-code i,
+  .piece-quantity i {
+    color: #94a3b8;
+  }
+
+  .piece-quantity {
+    color: #3b82f6;
+    font-weight: 600;
+  }
+
+  .piece-date {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+  }
+
+  .piece-date i {
+    color: #cbd5e1;
+  }
+
+  .empty-pieces {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    color: #64748b;
+    font-size: 0.95rem;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .empty-pieces i {
+    color: #94a3b8;
+  }
+
   .timeline-type-badge.completed {
     background: #d1fae5;
     color: #059669;
@@ -1165,6 +1385,168 @@
     }
   }
 
+
+  .piece-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+
+  .piece-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+  }
+
+  .piece-info strong {
+    color: #1e293b;
+    font-weight: 600;
+  }
+
+  .piece-code {
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+
+  .piece-quantity {
+    color: #3b82f6;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .btn-remove-piece {
+    background: #ef4444;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .btn-remove-piece:hover {
+    background: #dc2626;
+  }
+
+  .add-piece-form {
+    margin-top: 1rem;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .form-col {
+    flex: 1;
+  }
+
+  .form-col-quantity {
+    width: 100px;
+  }
+
+  .form-select,
+  .form-input {
+    width: 100%;
+    padding: 0.875rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease;
+  }
+
+  .form-select:focus,
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+
+  .btn-add-piece {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.875rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .btn-add-piece:hover:not(:disabled) {
+    background: #2563eb;
+  }
+
+  .btn-add-piece:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+    border-top: 2px solid #f1f5f9;
+    justify-content: flex-end;
+  }
+
+  .btn-cancel {
+    padding: 0.875rem 1.5rem;
+    background: #f1f5f9;
+    color: #64748b;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-cancel:hover:not(:disabled) {
+    background: #e2e8f0;
+  }
+
+  .btn-cancel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-submit {
+    padding: 0.875rem 1.5rem;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   @media (max-width: 768px) {
     .order-detail-container {
       padding: 1rem;
@@ -1186,5 +1568,6 @@
     .card-header {
       padding: 1.25rem 1.5rem;
     }
+
   }
 </style>

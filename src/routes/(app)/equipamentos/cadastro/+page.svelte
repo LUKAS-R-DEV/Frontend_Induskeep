@@ -46,12 +46,13 @@
       return;
     }
 
-    if (!name || !serial || !location) {
+    // Validação de campos obrigatórios (com trim para remover espaços)
+    if (!name || !name.trim() || !serial || !serial.trim() || !location || !location.trim()) {
       feedback.set({
         show: true,
         type: 'error',
         title: 'Campos obrigatórios',
-        message: 'Por favor, preencha todos os campos obrigatórios.',
+        message: 'Por favor, preencha todos os campos obrigatórios (Nome, Número de Série e Localização).',
       });
       loading = false;
       return;

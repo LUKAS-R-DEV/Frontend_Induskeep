@@ -32,12 +32,13 @@
     loading = true;
     error = '';
 
-    if (!name || !code || quantity === null || quantity === '') {
+    // Validação de campos obrigatórios (com trim para remover espaços)
+    if (!name || !name.trim() || !code || !code.trim() || quantity === null || quantity === '') {
       feedback.set({
         show: true,
         type: 'error',
         title: 'Campos obrigatórios',
-        message: 'Por favor, preencha todos os campos obrigatórios.',
+        message: 'Por favor, preencha todos os campos obrigatórios (Nome, Código e Quantidade).',
       });
       loading = false;
       return;

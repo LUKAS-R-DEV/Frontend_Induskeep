@@ -2,8 +2,6 @@
   import '$lib/styles/ordens.css';
   import { onMount } from 'svelte';
   import { OrdersApi } from '$lib/api/orders';
-  import { HistoryApi } from '$lib/api/history';
-  import { NotificationsApi } from '$lib/api/notifications';
   import { goto } from '$app/navigation';
   import { feedback } from '$lib/stores/feedback.stores.js';
   import { hasPermission } from '$lib/utils/permissions.js';
@@ -119,60 +117,9 @@
     }
   }
 
-  async function completeOrder(id) {
-    try {
-      const confirmed = await new Promise((resolve) => {
-        feedback.set({
-          show: true,
-          type: 'confirm',
-          title: 'Concluir ordem',
-          message: 'Deseja marcar esta ordem de serviço como concluída?',
-          confirmCallback: () => resolve(true)
-        });
-      });
-
-      if (!confirmed) return;
-
-      const order = ordens.find(o => o.id === id);
-      if (!order) {
-        throw new Error('Ordem de serviço não encontrada');
-      }
-
-      // Mensagem personalizada se já estiver concluída
-      const notes = order.status === 'COMPLETED' 
-        ? 'Ordem reaberta e concluída novamente'
-        : 'Ordem de serviço concluída pelo sistema';
-
-      await HistoryApi.create({
-        orderId: id,
-        notes
-      });
-
-      const notificationPayload = {
-        title: 'Ordem de serviço concluída',
-        message: `Ordem de serviço concluída: ${order.title}`,
-        userId: order.userId,
-      };
-      await NotificationsApi.create(notificationPayload);
-
-      ordens = ordens.map(order => 
-        order.id === id ? { ...order, status: 'COMPLETED' } : order
-      );
-
-      feedback.set({
-        show: true,
-        type: 'success',
-        title: 'Sucesso',
-        message: 'Ordem de serviço concluída com sucesso.',
-      });
-    } catch (e) {
-      feedback.set({
-        show: true,
-        type: 'error',
-        title: 'Erro',
-        message: e?.message || 'Falha ao concluir a ordem de serviço.',
-      });
-    }
+  function completeOrder(id) {
+    // Redireciona para a página de conclusão
+    goto(`/ordens/${id}/concluir`);
   }
 
   function getStatusClass(status) {
@@ -239,7 +186,8 @@
     if (order.userId !== user.id) {
       return false;
     }
-    return order.status !== 'CANCELLED';
+    // OBRIGATÓRIO: Apenas ordens em execução podem ser concluídas
+    return order.status === 'IN_PROGRESS';
   }
 
   function canStart(order = null) {
@@ -256,12 +204,12 @@
   function canPause(order = null) {
     if (!order || !user) return false;
     const userRole = String(user.role || '').toUpperCase().trim();
-    // Técnico pode pausar apenas ordens atribuídas a ele que estejam em andamento
+    // Apenas técnicos podem pausar ordens atribuídas a eles que estejam em andamento
     if (userRole === 'TECHNICIAN') {
       return order.userId === user.id && order.status === 'IN_PROGRESS';
     }
-    // Supervisor e admin podem pausar qualquer ordem em andamento
-    return order.status === 'IN_PROGRESS';
+    // Supervisores e admins não podem pausar ordens, apenas cancelar
+    return false;
   }
 
   async function startOrder(id) {
@@ -486,7 +434,12 @@
             <div class="order-actions">
               <button 
                 class="action-btn view" 
-                on:click={() => goto(`/ordens/${order.id}`)}
+                on:click={() => {
+                  console.log('🔍 [Lista] Botão Ver clicado:', { orderId: order.id, orderTitle: order.title });
+                  const targetUrl = `/ordens/${order.id}`;
+                  console.log('🔍 [Lista] Redirecionando para:', targetUrl);
+                  goto(targetUrl);
+                }}
                 title="Ver detalhes"
               >
                 <Eye size={16} />
@@ -526,10 +479,10 @@
                 <button
                   class="action-btn complete"
                   on:click={() => completeOrder(order.id)}
-                  title={order.status === 'COMPLETED' ? 'Concluir novamente' : 'Concluir'}
+                  title="Concluir ordem em execução"
                 >
                   <Check size={16} />
-                  {order.status === 'COMPLETED' ? 'Concluir Novamente' : 'Concluir'}
+                  Concluir
                 </button>
               {/if}
               {#if canDelete()}

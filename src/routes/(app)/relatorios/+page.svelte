@@ -5,6 +5,7 @@
   import { ReportApi } from '$lib/api/reports';
   import { MachinesApi } from '$lib/api/machines';
   import { StockApi } from '$lib/api/stock';
+  import { OrdersApi } from '$lib/api/orders';
   import { ExportFactory } from '$lib/export';
   import * as echarts from 'echarts';
   import { feedback } from '$lib/stores/feedback.stores.js';
@@ -16,13 +17,11 @@
     RotateCcw,
     TrendingUp,
     Factory,
-    ClipboardList,
     CheckCircle2,
     Percent,
     Clock,
     History,
     Package,
-    BarChart3,
     TriangleAlert,
     FileDown,
     Wrench,
@@ -31,6 +30,9 @@
     Cog,
     ChevronRight,
     PieChart,
+    CalendarX,
+    PlayCircle,
+    Users,
   } from 'lucide-svelte';
 
   let loading = true;
@@ -39,28 +41,51 @@
   let historico = [];
   let machines = [];
   let stockMovements = [];
+  let allOrders = [];
   let charts = {};
 
   $: completionRate = overview?.totalOrders
     ? ((overview.completedOrders / overview.totalOrders) * 100).toFixed(1)
     : 0;
-  $: avgPiecesPerOrder = overview?.totalOrders
-    ? (overview.totalPiecesUsed / overview.totalOrders).toFixed(2)
-    : 0;
-  $: pendingOrders = overview?.totalOrders - overview?.completedOrders || 0;
+  
+  // Formata tempo: mostra em dias se >= 24h, senão em horas, senão em minutos
+  function formatTime(hours) {
+    if (hours === null || hours === undefined || Number.isNaN(hours)) return '-';
+    if (hours === 0) return '0 h';
+    
+    // Se for menor que 1 hora, mostrar em minutos
+    if (hours < 1) {
+      const minutes = Math.round(hours * 60);
+      return minutes > 0 ? `${minutes} min` : '0 min';
+    }
+    
+    // Se for >= 24 horas, mostrar em dias
+    if (hours >= 24) {
+      const days = (hours / 24).toFixed(1);
+      return `${days} dias`;
+    }
+    
+    // Caso contrário, mostrar em horas com 1 casa decimal
+    return `${hours.toFixed(1)} h`;
+  }
+  
+  $: formattedMTTR = formatTime(overview?.avgRepairTime);
+  $: formattedMTBF = formatTime(overview?.avgFailureInterval);
 
   onMount(async () => {
     try {
-      const [analyticsRes, historyRes, machinesRes, stockRes] = await Promise.allSettled([
+      const [analyticsRes, historyRes, machinesRes, stockRes, ordersRes] = await Promise.allSettled([
         AnalyticsApi.get(),
         ReportApi.getHistory(),
         MachinesApi.list(),
-        StockApi.listMovements()
+        StockApi.listMovements(),
+        OrdersApi.list()
       ]);
       overview = analyticsRes.value || {};
       historico = historyRes.value || [];
       machines = machinesRes.value || [];
       stockMovements = stockRes.value || [];
+      allOrders = ordersRes.value || [];
 
       loading = false;
       await tick();
@@ -84,65 +109,170 @@
       charts[id] = chart;
     };
 
+    // Gráfico 1: Manutenções por Mês (últimos 6 meses)
+    const last6Months = [];
+    const maintByMonth = {};
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = monthNames[date.getMonth()];
+      last6Months.push(monthLabel);
+      maintByMonth[monthKey] = 0;
+    }
+
+    historico.forEach(h => {
+      if (h.completedAt) {
+        const date = new Date(h.completedAt);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (maintByMonth.hasOwnProperty(monthKey)) {
+          maintByMonth[monthKey]++;
+        }
+      }
+    });
+
+    const maintData = Object.values(maintByMonth);
+
     makeChart('maintHistoryChart', {
       title: { text: 'Manutenções por Mês', left: 'center', textStyle: { fontSize: 18 } },
       tooltip: { trigger: 'axis' },
       grid: { left: 50, right: 20, top: 60, bottom: 45 },
-      xAxis: { type: 'category', data: ['Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'] },
-      yAxis: { type: 'value' },
-      series: [{ type: 'line', smooth: true, data: [5, 7, 4, 8, 6, 9], areaStyle: { color: 'rgba(37,99,235,0.15)' } }]
+      xAxis: { type: 'category', data: last6Months },
+      yAxis: { type: 'value', name: 'Quantidade' },
+      series: [{ 
+        type: 'line', 
+        smooth: true, 
+        data: maintData, 
+        areaStyle: { color: 'rgba(37,99,235,0.15)' },
+        itemStyle: { color: palette[0] }
+      }]
     });
+
+    // Gráfico 2: Top 5 Equipamentos (por quantidade de manutenções concluídas)
+    const machineCounts = {};
+    historico.forEach(h => {
+      const machineName = h.order?.machine?.name || 'Não identificado';
+      machineCounts[machineName] = (machineCounts[machineName] || 0) + 1;
+    });
+
+    const topMachines = Object.entries(machineCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const machineNames = topMachines.map(m => m[0].length > 15 ? m[0].substring(0, 15) + '...' : m[0]);
+    const machineCountsData = topMachines.map(m => m[1]);
 
     makeChart('topEquipChart', {
       title: { text: 'Top 5 Equipamentos', left: 'center', textStyle: { fontSize: 18 } },
       tooltip: { trigger: 'axis' },
       grid: { left: 60, right: 20, top: 60, bottom: 60 },
-      xAxis: { type: 'category', data: ['Prensa H.', 'Compressor B', 'Misturador', 'Esteira X55', 'Máquina A'] },
-      yAxis: { type: 'value' },
-      series: [{ type: 'bar', data: [12, 9, 7, 6, 5], itemStyle: { color: palette[1], borderRadius: [6, 6, 0, 0] } }]
+      xAxis: { type: 'category', data: machineNames.length > 0 ? machineNames : ['Sem dados'] },
+      yAxis: { type: 'value', name: 'Manutenções' },
+      series: [{ 
+        type: 'bar', 
+        data: machineCountsData.length > 0 ? machineCountsData : [0], 
+        itemStyle: { color: palette[1], borderRadius: [6, 6, 0, 0] } 
+      }]
     });
 
+    // Gráfico 3: Status das Ordens (usa TODAS as ordens, não apenas histórico)
+    const statusCounts = {};
+    allOrders.forEach(order => {
+      const status = order?.status || 'PENDING';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    const statusLabels = {
+      'COMPLETED': 'Concluídas',
+      'PENDING': 'Pendentes',
+      'IN_PROGRESS': 'Em Andamento',
+      'CANCELLED': 'Canceladas',
+      'CANCELED': 'Canceladas'
+    };
+
+    const statusData = Object.entries(statusCounts)
+      .map(([status, count]) => ({
+        value: count,
+        name: statusLabels[status] || status
+      }))
+      .filter(item => item.value > 0); // Remove status com 0
+
+    // Mapear cores por status na ordem dos dados
+    const statusColorMap = {
+      'Concluídas': palette[1], // Verde
+      'Pendentes': palette[2], // Amarelo/Laranja
+      'Em Andamento': palette[0], // Azul
+      'Canceladas': palette[3] // Vermelho
+    };
+
+    // Criar array de cores na mesma ordem dos dados
+    const statusColors = statusData.map(item => statusColorMap[item.name] || palette[4]);
+
     makeChart('maintTypeChart', {
-      title: { text: 'Tipos de Manutenção', left: 'center', textStyle: { fontSize: 18 } },
-      tooltip: { trigger: 'item' },
+      title: { text: 'Status das Manutenções', left: 'center', textStyle: { fontSize: 18 } },
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
       legend: { bottom: 10 },
       series: [{
         type: 'pie',
         radius: ['45%', '75%'],
         label: { formatter: '{b}: {d}%', fontSize: 15 },
-        data: [
-          { value: 40, name: 'Preventiva' },
-          { value: 45, name: 'Corretiva' },
-          { value: 15, name: 'Preditiva' }
-        ],
-        color: [palette[0], palette[3], palette[2]]
+        data: statusData.length > 0 ? statusData : [{ value: 0, name: 'Sem dados' }],
+        color: statusData.length > 0 ? statusColors : [palette[4]]
       }]
     });
 
-    makeChart('techPerfChart', {
-      title: { text: 'Performance por Técnico', left: 'center', textStyle: { fontSize: 18 } },
-      tooltip: { trigger: 'axis' },
-      grid: { left: 120, right: 40, top: 60, bottom: 40 },
-      xAxis: { type: 'value' },
-      yAxis: { type: 'category', data: ['Carlos', 'Ana', 'João', 'Maria', 'Lucas'] },
-      series: [{ type: 'bar', data: [1.2, 1.5, 1.0, 1.8, 1.4], itemStyle: { color: palette[2], borderRadius: 8 } }]
+    // Gráfico 4: Performance por Técnico (ordens concluídas)
+    const techCounts = {};
+    historico.forEach(h => {
+      const techName = h.order?.user?.name || 'Não identificado';
+      techCounts[techName] = (techCounts[techName] || 0) + 1;
     });
 
+    const topTechs = Object.entries(techCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const techNames = topTechs.map(t => t[0]);
+    const techCountsData = topTechs.map(t => t[1]);
+
+    makeChart('techPerfChart', {
+      title: { text: 'Ordens Concluídas por Técnico', left: 'center', textStyle: { fontSize: 18 } },
+      tooltip: { trigger: 'axis', formatter: '{b}: {c} ordens' },
+      grid: { left: 120, right: 40, top: 60, bottom: 40 },
+      xAxis: { type: 'value', name: 'Ordens' },
+      yAxis: { type: 'category', data: techNames.length > 0 ? techNames : ['Sem dados'] },
+      series: [{ 
+        type: 'bar', 
+        data: techCountsData.length > 0 ? techCountsData : [0], 
+        itemStyle: { color: palette[2], borderRadius: 8 } 
+      }]
+    });
+
+    // Gráfico 5: Movimentações de Estoque (entradas vs saídas)
+    const movementCounts = { ENTRY: 0, EXIT: 0, ADJUSTMENT: 0 };
+    stockMovements.forEach(m => {
+      if (m.type && movementCounts.hasOwnProperty(m.type)) {
+        movementCounts[m.type]++;
+      }
+    });
+
+    const movementData = [
+      { value: movementCounts.ENTRY, name: 'Entradas' },
+      { value: movementCounts.EXIT, name: 'Saídas' },
+      { value: movementCounts.ADJUSTMENT, name: 'Ajustes' }
+    ].filter(m => m.value > 0);
+
     makeChart('piecesChart', {
-      title: { text: 'Consumo de Peças', left: 'center', textStyle: { fontSize: 18 } },
-      tooltip: { trigger: 'item' },
+      title: { text: 'Movimentações de Estoque', left: 'center', textStyle: { fontSize: 18 } },
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
       legend: { bottom: 10 },
       series: [{
         type: 'pie',
         radius: ['50%', '78%'],
         label: { formatter: '{b}: {d}%', fontSize: 15 },
-        data: [
-          { value: 12, name: 'Filtros' },
-          { value: 9, name: 'Correias' },
-          { value: 7, name: 'Parafusos' },
-          { value: 5, name: 'Óleo' },
-          { value: 3, name: 'Outros' }
-        ],
+        data: movementData.length > 0 ? movementData : [{ value: 0, name: 'Sem dados' }],
         color: palette
       }]
     });
@@ -150,7 +280,12 @@
 
   async function exportReport(type, data) {
     try {
-      await ExportFactory[type](data, 'pdf');
+      if (type === 'analytics') {
+        // Para analytics, passar overview e charts
+        await ExportFactory[type](data, charts, 'pdf');
+      } else {
+        await ExportFactory[type](data, 'pdf');
+      }
       feedback.set({
         show: true,
         type: 'success',
@@ -219,21 +354,11 @@
 
         <div class="kpi-card">
           <div class="kpi-icon">
-            <ClipboardList size={28} color="white" />
+            <Users size={28} color="white" />
           </div>
           <div class="kpi-content">
-            <span class="kpi-label">Total de OS</span>
-            <div class="kpi-value">{overview.totalOrders || 0}</div>
-          </div>
-        </div>
-
-        <div class="kpi-card success">
-          <div class="kpi-icon">
-            <CheckCircle2 size={28} color="white" />
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Concluídas</span>
-            <div class="kpi-value">{overview.completedOrders || 0}</div>
+            <span class="kpi-label">Total de Técnicos</span>
+            <div class="kpi-value">{overview.totalTechnicians || 0}</div>
           </div>
         </div>
 
@@ -253,7 +378,7 @@
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Tempo Médio (MTTR)</span>
-            <div class="kpi-value">{overview.avgRepairTime || 0} h</div>
+            <div class="kpi-value">{formattedMTTR}</div>
           </div>
         </div>
 
@@ -263,7 +388,7 @@
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Intervalo entre Falhas (MTBF)</span>
-            <div class="kpi-value">{overview.avgFailureInterval || 0} h</div>
+            <div class="kpi-value">{formattedMTBF}</div>
           </div>
         </div>
 
@@ -272,18 +397,8 @@
             <Package size={28} color="white" />
           </div>
           <div class="kpi-content">
-            <span class="kpi-label">Peças Usadas</span>
-            <div class="kpi-value">{overview.totalPiecesUsed || 0}</div>
-          </div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon">
-            <BarChart3 size={28} color="white" />
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-label">Média Peças/OS</span>
-            <div class="kpi-value">{avgPiecesPerOrder}</div>
+            <span class="kpi-label">Peças Usadas (30 dias)</span>
+            <div class="kpi-value">{overview.piecesUsedLastMonth || 0}</div>
           </div>
         </div>
 
@@ -293,7 +408,27 @@
           </div>
           <div class="kpi-content">
             <span class="kpi-label">Ordens Pendentes</span>
-            <div class="kpi-value">{pendingOrders}</div>
+            <div class="kpi-value">{overview.pendingOrders || 0}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card primary">
+          <div class="kpi-icon">
+            <PlayCircle size={28} color="white" />
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Ordens em Andamento</span>
+            <div class="kpi-value">{overview.inProgressOrders || 0}</div>
+          </div>
+        </div>
+
+        <div class="kpi-card danger">
+          <div class="kpi-icon">
+            <CalendarX size={28} color="white" />
+          </div>
+          <div class="kpi-content">
+            <span class="kpi-label">Agendamentos Atrasados</span>
+            <div class="kpi-value">{overview.overdueSchedules || 0}</div>
           </div>
         </div>
       </div>
@@ -306,12 +441,12 @@
         Relatórios Disponíveis
       </h2>
       <div class="report-cards">
-        <div class="report-card" on:click={() => exportReport('reports', historico)}>
+        <div class="report-card" on:click={() => exportReport('reports', allOrders)}>
           <div class="report-icon primary">
             <Wrench size={28} color="white" />
           </div>
           <h3 class="report-title">Relatório de OS por Período</h3>
-          <p class="report-description">Relatório detalhado de ordens de serviço, com status e técnicos.</p>
+          <p class="report-description">Relatório detalhado de todas as ordens de serviço (pendentes, em andamento, concluídas e canceladas).</p>
           <div class="report-footer">
             <span class="report-badge">PDF, CSV</span>
             <ChevronRight size={18} />
@@ -323,7 +458,7 @@
             <Box size={28} color="white" />
           </div>
           <h3 class="report-title">Consumo de Peças</h3>
-          <p class="report-description">Análise de consumo de peças por equipamento e tipo de manutenção.</p>
+          <p class="report-description">Análise de movimentações de estoque: entradas, saídas e ajustes.</p>
           <div class="report-footer">
             <span class="report-badge">PDF, CSV</span>
             <ChevronRight size={18} />
@@ -337,7 +472,7 @@
           <h3 class="report-title">Indicadores de Performance</h3>
           <p class="report-description">KPIs de manutenção: MTBF, MTTR e disponibilidade.</p>
           <div class="report-footer">
-            <span class="report-badge">PDF</span>
+            <span class="report-badge">PDF, CSV</span>
             <ChevronRight size={18} />
           </div>
         </div>

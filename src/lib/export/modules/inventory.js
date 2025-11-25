@@ -1,4 +1,4 @@
-import { createBasePDF, addFooter } from "../utils/pdfUtils.js";
+import { createBasePDF, addFooter, drawRoundedRect } from "../utils/pdfUtils.js";
 import { toCSV } from "../utils/csvUtils.js";
 import autoTable from "jspdf-autotable";
 import { formatDate } from "../utils/formatters.js";
@@ -24,15 +24,30 @@ function normalizeData(list) {
     };
   });
 
+  // Calcular totais de entradas e saídas (quantidades, não contagem)
+  let totalEntradas = 0;
+  let totalSaidas = 0;
+  
+  rows.forEach(r => {
+    const qty = typeof r.rawQuantity === "number" ? r.rawQuantity : 0;
+    if (r.rawType === "IN" || r.rawType === "ENTRY") {
+      totalEntradas += qty;
+    } else if (r.rawType === "OUT" || r.rawType === "EXIT") {
+      totalSaidas += qty;
+    }
+  });
+  
+  const saldo = totalEntradas - totalSaidas;
+
   const stats = {
     total: rows.length,
     entradas: rows.filter(r => r.rawType === "IN" || r.rawType === "ENTRY").length,
     saidas: rows.filter(r => r.rawType === "OUT" || r.rawType === "EXIT").length,
+    totalEntradas: totalEntradas,
+    totalSaidas: totalSaidas,
+    saldo: saldo,
     pecasUnicas: new Set(rows.map(r => r.peca).filter(p => p !== "-")).size,
-    quantidadeTotal: rows.reduce((sum, r) => {
-      const qty = typeof r.rawQuantity === "number" ? r.rawQuantity : 0;
-      return sum + (r.rawType === "IN" || r.rawType === "ENTRY" ? qty : -qty);
-    }, 0),
+    quantidadeTotal: saldo,
   };
 
   return { rows, stats };
@@ -59,10 +74,10 @@ function exportInventoryCSV(rows, stats) {
   const summary = [
     "RESUMO DO RELATÓRIO DE ESTOQUE",
     `Total de Movimentações: ${stats.total}`,
-    `Entradas: ${stats.entradas}`,
-    `Saídas: ${stats.saidas}`,
+    `Total de Entradas: ${stats.totalEntradas}`,
+    `Total de Saídas: ${stats.totalSaidas}`,
+    `Saldo: ${stats.saldo >= 0 ? "+" : ""}${stats.saldo}`,
     `Peças Únicas: ${stats.pecasUnicas}`,
-    `Saldo Total: ${stats.quantidadeTotal >= 0 ? "+" : ""}${stats.quantidadeTotal}`,
     "",
   ];
 
@@ -97,6 +112,7 @@ function exportInventoryPDF(rows, stats) {
   const successColor = [16, 185, 129];
   const warningColor = [245, 158, 11];
   const infoColor = [59, 130, 246];
+  const dangerColor = [239, 68, 68];
 
   let startY = 120;
 
@@ -108,66 +124,59 @@ function exportInventoryPDF(rows, stats) {
 
   startY += 25;
 
-  // Boxes de estatísticas
-  const boxWidth = 120;
-  const boxHeight = 70;
+  // Boxes de estatísticas - 3 boxes
+  const boxWidth = 150;
+  const boxHeight = 75;
   const boxX = 40;
   const boxY = startY;
+  const boxSpacing = 15;
 
-  // Box 1: Total
-  doc.setFillColor(245, 247, 250);
-  doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.setTextColor(...primaryColor);
-  doc.text(stats.total.toString(), boxX + 10, boxY + 20);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Movimentações", boxX + 10, boxY + 30);
-
-  // Box 2: Entradas
+  // Box 1: Total de Entradas
   doc.setFillColor(236, 253, 245);
-  doc.roundedRect(boxX + boxWidth + 10, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...successColor);
-  doc.text(stats.entradas.toString(), boxX + boxWidth + 20, boxY + 20);
+  doc.text(stats.totalEntradas.toString(), boxX + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Entradas", boxX + boxWidth + 20, boxY + 30);
+  doc.text("Total de", boxX + 10, boxY + 40);
+  doc.text("Entradas", boxX + 10, boxY + 50);
 
-  // Box 3: Saídas
+  // Box 2: Total de Saídas
   doc.setFillColor(255, 251, 235);
-  doc.roundedRect(boxX + (boxWidth + 10) * 2, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + boxWidth + boxSpacing, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...warningColor);
-  doc.text(stats.saidas.toString(), boxX + (boxWidth + 10) * 2 + 10, boxY + 20);
+  doc.text(stats.totalSaidas.toString(), boxX + boxWidth + boxSpacing + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Saídas", boxX + (boxWidth + 10) * 2 + 10, boxY + 30);
+  doc.text("Total de", boxX + boxWidth + boxSpacing + 10, boxY + 40);
+  doc.text("Saídas", boxX + boxWidth + boxSpacing + 10, boxY + 50);
 
-  // Box 4: Peças Únicas
-  doc.setFillColor(239, 246, 255);
-  doc.roundedRect(boxX + (boxWidth + 10) * 3, boxY, boxWidth, boxHeight, 3, 3, "F");
+  // Box 3: Saldo
+  const saldoColor = stats.saldo >= 0 ? successColor : dangerColor;
+  const saldoBgColor = stats.saldo >= 0 ? [236, 253, 245] : [254, 242, 242];
+  doc.setFillColor(...saldoBgColor);
+  drawRoundedRect(doc, boxX + (boxWidth + boxSpacing) * 2, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.setTextColor(...infoColor);
-  doc.text(stats.pecasUnicas.toString(), boxX + (boxWidth + 10) * 3 + 10, boxY + 20);
+  doc.setTextColor(...saldoColor);
+  const saldoText = stats.saldo >= 0 ? `+${stats.saldo}` : stats.saldo.toString();
+  doc.text(saldoText, boxX + (boxWidth + boxSpacing) * 2 + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Peças Únicas", boxX + (boxWidth + 10) * 3 + 10, boxY + 30);
+  doc.text("Saldo", boxX + (boxWidth + boxSpacing) * 2 + 10, boxY + 40);
 
   startY += boxHeight + 20;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  const saldoText = stats.quantidadeTotal >= 0 ? `Saldo Total: +${stats.quantidadeTotal}` : `Saldo Total: ${stats.quantidadeTotal}`;
-  doc.text(saldoText, 40, startY);
+  doc.text(`Movimentações: ${stats.total} | Peças Únicas: ${stats.pecasUnicas}`, 40, startY);
 
   startY += 15;
   doc.setDrawColor(200, 200, 200);

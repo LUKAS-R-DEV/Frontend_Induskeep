@@ -9,6 +9,7 @@ export const formatStatus = (status) => {
   switch (status) {
     case "COMPLETED": return "✅ Concluído";
     case "PENDING": return "🕓 Pendente";
+    case "IN_PROGRESS": return "⚙️ Em Andamento";
     case "CANCELLED": return "❌ Cancelado";
     default: return status;
   }

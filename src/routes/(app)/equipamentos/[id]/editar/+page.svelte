@@ -43,8 +43,9 @@
     loading = true;
     error = '';
 
-    if (!name || !serial || !location) {
-      error = 'Por favor, preencha todos os campos obrigatórios.';
+    // Validação de campos obrigatórios (com trim para remover espaços)
+    if (!name || !name.trim() || !serial || !serial.trim() || !location || !location.trim()) {
+      error = 'Por favor, preencha todos os campos obrigatórios (Nome, Número de Série e Localização).';
       feedback.set({
         show: true,
         type: 'error',

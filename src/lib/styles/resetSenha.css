@@ -85,22 +85,14 @@
 }
 
 .logo-icon {
-  width: 70px;
-  height: 70px;
+  width: 48px;
+  height: 48px;
   background: linear-gradient(135deg, var(--auth-primary) 0%, var(--auth-primary-dark) 100%);
-  border-radius: 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 2rem;
-  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3);
 }
 
 .logo-text {
@@ -150,9 +142,8 @@
   font-weight: 600;
 }
 
-.form-group label i {
+.form-group label svg {
   color: var(--auth-primary);
-  font-size: 0.85rem;
 }
 
 .form-group input {
@@ -250,6 +241,10 @@
   margin-top: 0.25rem;
 }
 
+.password-hint svg {
+  flex-shrink: 0;
+}
+
 .password-hint.error {
   color: var(--auth-error);
 }
@@ -312,14 +307,7 @@
   cursor: not-allowed;
 }
 
-.btn i.fa-spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+/* Spinner animation is now handled in component styles */
 
 .alert {
   padding: 0.875rem 1rem;
@@ -354,8 +342,8 @@
   border: 1px solid #a7f3d0;
 }
 
-.alert i {
-  font-size: 1.1rem;
+.alert svg {
+  flex-shrink: 0;
 }
 
 .auth-footer {
@@ -363,59 +351,6 @@
   margin-top: 0.5rem;
 }
 
-.auth-decorative {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  overflow: hidden;
-  border-radius: 20px;
-  z-index: 0;
-}
-
-.decorative-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  animation: float 6s ease-in-out infinite;
-}
-
-.circle-1 {
-  width: 120px;
-  height: 120px;
-  top: -60px;
-  right: -60px;
-  animation-delay: 0s;
-}
-
-.circle-2 {
-  width: 80px;
-  height: 80px;
-  bottom: -40px;
-  left: -40px;
-  animation-delay: 2s;
-}
-
-.circle-3 {
-  width: 60px;
-  height: 60px;
-  top: 50%;
-  right: -30px;
-  animation-delay: 4s;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.5;
-  }
-  50% {
-    transform: translate(20px, -20px) scale(1.1);
-    opacity: 0.7;
-  }
-}
 
 /* Responsive */
 @media (max-width: 480px) {
@@ -425,9 +360,8 @@
   }
 
   .logo-icon {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
+    width: 44px;
+    height: 44px;
   }
 
   .logo-text {

@@ -68,9 +68,19 @@
       machineId = os.machineId || os.machine?.id || '';
       userId = os.userId || os.user?.id || '';
       originalStatus = os.status || 'PENDING'; // Guarda o status original para referência
-      // Se estiver concluída, permite reabrir mudando para outro status
-      // Se não estiver concluída, usa o status atual
-      status = os.status === 'COMPLETED' ? 'IN_PROGRESS' : (os.status || 'PENDING');
+      
+      // Inicializa o status baseado no papel do usuário
+      const isSupervisorOrAdmin = userRole === 'SUPERVISOR' || userRole === 'ADMIN';
+      if (isSupervisorOrAdmin) {
+        // Supervisores e admins só podem cancelar, então mantém o status atual ou define como CANCELLED
+        status = os.status === 'CANCELLED' ? 'CANCELLED' : 'CANCELLED';
+      } else if (userRole === 'TECHNICIAN') {
+        // Técnicos: se estiver concluída, permite reabrir mudando para outro status
+        status = os.status === 'COMPLETED' ? 'IN_PROGRESS' : (os.status || 'PENDING');
+      } else {
+        // Outros usuários: mantém o status atual
+        status = os.status === 'COMPLETED' ? 'IN_PROGRESS' : (os.status || 'PENDING');
+      }
 
       // Preenche listas
       machines = Array.isArray(dataMachines) ? dataMachines : [];
@@ -96,8 +106,9 @@
     loading = true;
     error = '';
 
-    if (!title || !description || !machineId || !userId) {
-      error = 'Por favor, preencha todos os campos obrigatórios.';
+    // Validação de campos obrigatórios (com trim para remover espaços)
+    if (!title || !title.trim() || !description || !description.trim() || !machineId || !userId) {
+      error = 'Por favor, preencha todos os campos obrigatórios (Título, Descrição, Equipamento e Técnico).';
       feedback.set({
         show: true,
         type: 'error',
@@ -111,6 +122,20 @@
     try {
       // Validação: apenas técnicos podem mudar status para IN_PROGRESS ou COMPLETED
       const userRole = user ? String(user.role || '').toUpperCase().trim() : '';
+      const isSupervisorOrAdmin = userRole === 'SUPERVISOR' || userRole === 'ADMIN';
+      
+      // Supervisores e admins só podem cancelar ordens
+      if (isSupervisorOrAdmin && status !== 'CANCELLED') {
+        feedback.set({
+          show: true,
+          type: 'error',
+          title: 'Acesso negado',
+          message: 'Supervisores e administradores só podem cancelar ordens de serviço. Apenas técnicos podem alterar o status da ordem.',
+        });
+        loading = false;
+        return;
+      }
+      
       if ((status === 'IN_PROGRESS' || status === 'COMPLETED') && userRole !== 'TECHNICIAN') {
         feedback.set({
           show: true,
@@ -363,11 +388,13 @@
             class="form-select"
             disabled={loading}
           >
-            <option value="PENDING">Pendente</option>
             {#if user && String(user.role || '').toUpperCase().trim() === 'TECHNICIAN'}
+              <option value="PENDING">Pendente</option>
               <option value="IN_PROGRESS">Em Andamento</option>
-            {/if}
-            {#if !user || String(user.role || '').toUpperCase().trim() !== 'TECHNICIAN'}
+            {:else if user && (String(user.role || '').toUpperCase().trim() === 'SUPERVISOR' || String(user.role || '').toUpperCase().trim() === 'ADMIN')}
+              <option value="CANCELLED">Cancelada</option>
+            {:else}
+              <option value="PENDING">Pendente</option>
               <option value="CANCELLED">Cancelada</option>
             {/if}
           </select>

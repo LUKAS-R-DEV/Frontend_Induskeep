@@ -1,5 +1,5 @@
-import { createBasePDF, addFooter } from "../utils/pdfUtils.js";
-import { toCSV } from "../utils/csvUtils.js";
+import { createBasePDF, addFooter, drawRoundedRect } from "../utils/pdfUtils.js";
+import { formatDate } from "../utils/formatters.js";
 import autoTable from "jspdf-autotable";
 
 export async function exportMachines(data, format = "pdf") {
@@ -9,27 +9,39 @@ export async function exportMachines(data, format = "pdf") {
 }
 
 function normalizeData(list) {
-  const rows = (list || []).map(m => ({
-    nome: m.name || "-",
-    serial: m.serial || "-",
-    localizacao: m.location || "-",
-    status: m.status || "-",
-    rawStatus: m.status,
-  }));
+  const rows = (list || []).map(m => {
+    const dataCriacao = m?.createdAt || null;
+    
+    return {
+      nome: m.name || "-",
+      serial: m.serial || "-",
+      localizacao: m.location || "-",
+      status: m.status || "-",
+      dataCriacao: dataCriacao,
+      rawStatus: m.status,
+    };
+  });
+
+  // Ordenar por nome
+  rows.sort((a, b) => {
+    const nameA = (a.nome || "").toLowerCase();
+    const nameB = (b.nome || "").toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
 
   const stats = {
     total: rows.length,
     operacionais: rows.filter(r => {
       const s = String(r.rawStatus || "").toUpperCase();
-      return s === "ACTIVE" || s === "OPERATIONAL" || s === "OPERATIVA";
+      return s === "ACTIVE";
     }).length,
     manutencao: rows.filter(r => {
       const s = String(r.rawStatus || "").toUpperCase();
-      return s === "MAINTENANCE" || s === "IN_MAINTENANCE" || s === "EM_MANUTENCAO";
+      return s === "MAINTENANCE" || s === "IN_MAINTENANCE";
     }).length,
     inativas: rows.filter(r => {
       const s = String(r.rawStatus || "").toUpperCase();
-      return s === "INACTIVE" || s === "STOPPED" || s === "INATIVA" || s === "PARADA";
+      return s === "INACTIVE" || s === "STOPPED";
     }).length,
     localizacoesUnicas: new Set(rows.map(r => r.localizacao).filter(l => l !== "-")).size,
   };
@@ -57,27 +69,32 @@ function formatStatus(status) {
 
 function exportMachinesCSV(rows, stats) {
   const summary = [
-    "RESUMO DO RELATÓRIO DE MÁQUINAS",
+    "RELATÓRIO DE MÁQUINAS E EQUIPAMENTOS",
+    "",
+    "RESUMO EXECUTIVO",
     `Total de Máquinas: ${stats.total}`,
     `Operacionais: ${stats.operacionais}`,
     `Em Manutenção: ${stats.manutencao}`,
     `Inativas: ${stats.inativas}`,
     `Localizações: ${stats.localizacoesUnicas}`,
     "",
+    "DETALHES",
+    "",
   ];
 
-  const headers = ["Nome", "Número de Série", "Localização", "Status"];
+  const headers = ["Nome", "Número de Série", "Localização", "Status", "Data de Criação"];
   const csvRows = rows.map(r => [
     r.nome,
     r.serial,
     r.localizacao,
     formatStatus(r.rawStatus),
+    r.dataCriacao ? formatDate(r.dataCriacao) : "-",
   ]);
 
   const csv = [
     ...summary,
     headers.join(";"),
-    ...csvRows.map(r => r.map(v => `"${v ?? ""}"`).join(";"))
+    ...csvRows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"))
   ].join("\n");
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -91,66 +108,86 @@ function exportMachinesCSV(rows, stats) {
 }
 
 function exportMachinesPDF(rows, stats) {
-  const doc = createBasePDF("Relatório de Máquinas");
+  const doc = createBasePDF("Relatório de Máquinas e Equipamentos");
   
   const primaryColor = [37, 99, 235];
   const successColor = [16, 185, 129];
   const warningColor = [245, 158, 11];
   const dangerColor = [239, 68, 68];
+  const infoColor = [59, 130, 246];
 
   let startY = 120;
 
   // Título da seção
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setTextColor(...primaryColor);
   doc.text("Resumo Executivo", 40, startY);
 
-  startY += 25;
+  startY += 30;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
 
-  // Boxes de estatísticas
-  const boxWidth = 160;
-  const boxHeight = 70;
+  // Boxes de estatísticas - 4 boxes em linha
+  const boxWidth = 120;
+  const boxHeight = 75;
   const boxX = 40;
   const boxY = startY;
+  const boxSpacing = 10;
 
   // Box 1: Total
   doc.setFillColor(245, 247, 250);
-  doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...primaryColor);
-  doc.text(stats.total.toString(), boxX + 10, boxY + 20);
+  doc.text(stats.total.toString(), boxX + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Total de Máquinas", boxX + 10, boxY + 30);
+  doc.text("Total de", boxX + 10, boxY + 40);
+  doc.text("Máquinas", boxX + 10, boxY + 50);
 
   // Box 2: Operacionais
   doc.setFillColor(236, 253, 245);
-  doc.roundedRect(boxX + boxWidth + 10, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + boxWidth + boxSpacing, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...successColor);
-  doc.text(stats.operacionais.toString(), boxX + boxWidth + 20, boxY + 20);
+  doc.text(stats.operacionais.toString(), boxX + boxWidth + boxSpacing + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Operacionais", boxX + boxWidth + 20, boxY + 30);
+  doc.text("Operacionais", boxX + boxWidth + boxSpacing + 10, boxY + 40);
 
   // Box 3: Em Manutenção
   doc.setFillColor(255, 251, 235);
-  doc.roundedRect(boxX + (boxWidth + 10) * 2, boxY, boxWidth, boxHeight, 3, 3, "F");
+  drawRoundedRect(doc, boxX + (boxWidth + boxSpacing) * 2, boxY, boxWidth, boxHeight, 3, true);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...warningColor);
-  doc.text(stats.manutencao.toString(), boxX + (boxWidth + 10) * 2 + 10, boxY + 20);
+  doc.text(stats.manutencao.toString(), boxX + (boxWidth + boxSpacing) * 2 + 10, boxY + 25);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text("Em Manutenção", boxX + (boxWidth + 10) * 2 + 10, boxY + 30);
+  doc.text("Em", boxX + (boxWidth + boxSpacing) * 2 + 10, boxY + 40);
+  doc.text("Manutenção", boxX + (boxWidth + boxSpacing) * 2 + 10, boxY + 50);
 
-  startY += boxHeight + 20;
+  // Box 4: Inativas
+  doc.setFillColor(254, 242, 242);
+  drawRoundedRect(doc, boxX + (boxWidth + boxSpacing) * 3, boxY, boxWidth, boxHeight, 3, true);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(...dangerColor);
+  doc.text(stats.inativas.toString(), boxX + (boxWidth + boxSpacing) * 3 + 10, boxY + 25);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Inativas", boxX + (boxWidth + boxSpacing) * 3 + 10, boxY + 40);
+
+  // Informações adicionais
+  startY += boxHeight + 25;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
@@ -167,19 +204,21 @@ function exportMachinesPDF(rows, stats) {
   const tableRows = rows.map(r => [
     r.nome,
     r.serial,
-    r.localizacao,
+    r.localizacao || "-",
     formatStatus(r.rawStatus),
+    r.dataCriacao ? formatDate(r.dataCriacao) : "-",
   ]);
 
   autoTable(doc, {
     startY: startY,
-    head: [["Nome", "Número de Série", "Localização", "Status"]],
+    head: [["Nome", "Número de Série", "Localização", "Status", "Data Criação"]],
     body: tableRows,
     theme: "striped",
     styles: {
       fontSize: 9,
-      cellPadding: 6,
+      cellPadding: 5,
       overflow: "linebreak",
+      cellWidth: "wrap",
     },
     headStyles: {
       fillColor: primaryColor,
@@ -189,10 +228,11 @@ function exportMachinesPDF(rows, stats) {
       fontSize: 10,
     },
     columnStyles: {
-      0: { cellWidth: 150 },
-      1: { cellWidth: 120 },
-      2: { cellWidth: 120 },
-      3: { cellWidth: 100, halign: "center" },
+      0: { cellWidth: 140 }, // Nome
+      1: { cellWidth: 120 }, // Serial
+      2: { cellWidth: 90 }, // Localização
+      3: { cellWidth: 100, halign: "center" }, // Status
+      4: { cellWidth: 105, halign: "center" }, // Data Criação
     },
     alternateRowStyles: { fillColor: [249, 250, 251] },
     margin: { top: startY, left: 40, right: 40 },

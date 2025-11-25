@@ -53,8 +53,15 @@
     loading = true;
     error = '';
 
-    if (!title || !description || !machineId || !userId) {
-      error = 'Por favor, preencha todos os campos obrigatórios.';
+    // Validação de campos obrigatórios (com trim para remover espaços)
+    if (!title || !title.trim() || !description || !description.trim() || !machineId || !userId) {
+      error = 'Por favor, preencha todos os campos obrigatórios (Título, Descrição, Equipamento e Técnico).';
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Campos obrigatórios',
+        message: error,
+      });
       loading = false;
       return;
     }
