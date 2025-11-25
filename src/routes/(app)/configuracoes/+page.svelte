@@ -3,7 +3,7 @@
   import { SettingsApi } from "$lib/api/settings";
   import '$lib/styles/configuracoes.css';
   import { feedback } from '$lib/stores/feedback.stores.js';
-  import { isAdmin, isSupervisorOrAdmin } from '$lib/utils/permissions.js';
+  import { isSupervisorOrAdmin } from '$lib/utils/permissions.js';
 
   // ✅ Ícones Lucide
   import {
@@ -11,9 +11,7 @@
     Lock,
     Cog,
     Package,
-    Bell,
     Wrench,
-    Mail,
     AlertCircle,
     CheckCircle2,
     Save,
@@ -27,10 +25,7 @@
 
   let form = {
     minStockThreshold: 5,
-    autoNotifyLowStock: true,
     defaultRepairDuration: null,
-    notificationEmail: "",
-    maintenanceWindow: "08:00-18:00"
   };
 
   onMount(async () => {
@@ -53,10 +48,7 @@
       if (data) {
         form = {
           minStockThreshold: data.minStockThreshold ?? 5,
-          autoNotifyLowStock: data.autoNotifyLowStock ?? true,
           defaultRepairDuration: data.defaultRepairDuration ?? null,
-          notificationEmail: data.notificationEmail ?? "",
-          maintenanceWindow: data.maintenanceWindow ?? "08:00-18:00"
         };
       }
     } catch (e) {
@@ -79,44 +71,6 @@
     if (form.minStockThreshold < 1) {
       error = "O estoque mínimo deve ser maior que 0.";
       return false;
-    }
-    
-    if (form.notificationEmail && form.notificationEmail.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.notificationEmail)) {
-      error = "Email inválido.";
-      return false;
-    }
-
-    // Valida janela de manutenção (formato: HH:MM-HH:MM)
-    if (form.maintenanceWindow && form.maintenanceWindow.trim() !== "") {
-      const trimmed = form.maintenanceWindow.trim();
-      // Aceita formato HH:MM-HH:MM ou H:MM-H:MM
-      const pattern = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/;
-      const match = trimmed.match(pattern);
-      
-      if (!match) {
-        error = "Formato de janela de manutenção inválido. Use: HH:MM-HH:MM (ex: 08:00-18:00)";
-        return false;
-      }
-      
-      // Valida horas (0-23) e minutos (0-59)
-      const startHour = parseInt(match[1], 10);
-      const startMin = parseInt(match[2], 10);
-      const endHour = parseInt(match[3], 10);
-      const endMin = parseInt(match[4], 10);
-      
-      if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23) {
-        error = "As horas devem estar entre 00 e 23";
-        return false;
-      }
-      
-      if (startMin < 0 || startMin > 59 || endMin < 0 || endMin > 59) {
-        error = "Os minutos devem estar entre 00 e 59";
-        return false;
-      }
-      
-      // Normaliza o formato para HH:MM-HH:MM (com zeros à esquerda)
-      const normalized = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}-${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
-      form.maintenanceWindow = normalized;
     }
 
     return true;
@@ -144,10 +98,7 @@
       // Prepara payload, normalizando campos vazios para null
       const payload = {
         minStockThreshold: form.minStockThreshold,
-        autoNotifyLowStock: form.autoNotifyLowStock,
         defaultRepairDuration: form.defaultRepairDuration || null,
-        notificationEmail: (form.notificationEmail && form.notificationEmail.trim()) || null,
-        maintenanceWindow: (form.maintenanceWindow && form.maintenanceWindow.trim()) || null
       };
 
       await SettingsApi.update(payload);
@@ -255,22 +206,6 @@
             />
             <small class="form-hint">Quantidade mínima de peças antes de alertar estoque baixo</small>
           </div>
-
-          <div class="form-group">
-            <div class="checkbox-wrapper">
-              <input
-                type="checkbox"
-                id="autoNotify"
-                bind:checked={form.autoNotifyLowStock}
-                class="checkbox-input"
-              />
-              <label for="autoNotify" class="checkbox-label">
-                <Bell size={16} />
-                Notificar automaticamente quando estoque estiver baixo
-              </label>
-            </div>
-            <small class="form-hint">Ativa notificações automáticas quando o estoque atingir o mínimo</small>
-          </div>
         </div>
 
         <!-- Manutenção -->
@@ -296,44 +231,6 @@
               class="form-input"
             />
             <small class="form-hint">Tempo padrão estimado para reparos em horas</small>
-          </div>
-
-          <div class="form-group">
-            <label for="maintenanceWindow">
-              Janela de Manutenção
-            </label>
-            <input
-              id="maintenanceWindow"
-              type="text"
-              bind:value={form.maintenanceWindow}
-              placeholder="08:00-18:00"
-              class="form-input"
-              autocomplete="off"
-            />
-            <small class="form-hint">Horário permitido para manutenções (formato: HH:MM-HH:MM)</small>
-          </div>
-        </div>
-
-        <!-- Notificações -->
-        <div class="form-section">
-          <div class="section-header">
-            <h3 class="section-title">
-              <Mail size={18} />
-              Notificações
-            </h3>
-          </div>
-          <div class="form-group">
-            <label for="notificationEmail">
-              Email de Notificação
-            </label>
-            <input
-              id="notificationEmail"
-              type="email"
-              bind:value={form.notificationEmail}
-              placeholder="exemplo@empresa.com"
-              class="form-input"
-            />
-            <small class="form-hint">Email para receber notificações do sistema</small>
           </div>
         </div>
 

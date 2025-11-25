@@ -4,7 +4,6 @@
   import { onMount } from 'svelte';
   import { MachinesApi } from '$lib/api/machines';
   import { UserApi } from '$lib/api/users';
-  import { NotificationsApi } from '$lib/api/notifications';
   import { goto } from '$app/navigation';
   import { feedback } from '$lib/stores/feedback.stores.js';
   import { isAdmin } from '$lib/utils/permissions.js';
@@ -70,13 +69,8 @@
       // Sempre cria como PENDING - faz mais sentido uma ordem recém-criada estar pendente
       const payload = { title, description, machineId, userId, status: 'PENDING' };
       await OrdersApi.create(payload);
-
-      const notificationPayload = {
-        title: 'Nova Ordem de Serviço',
-        message: `Nova ordem de serviço criada: ${title}`,
-        userId: userId,
-      };
-      await NotificationsApi.create(notificationPayload);
+      
+      // Notificação é criada automaticamente pelo backend quando um técnico é atribuído
 
       feedback.set({
         show: true,

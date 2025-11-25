@@ -49,9 +49,12 @@
     }
   }
 
-  // Atualizar contador quando a página de notificações mudar
-  $: if ($page.url.pathname === '/notificacoes') {
-    fetchUnreadCount();
+  // Atualizar contador quando a página de notificações mudar (com debounce)
+  let lastPathname = '';
+  $: if ($page.url.pathname === '/notificacoes' && $page.url.pathname !== lastPathname) {
+    lastPathname = $page.url.pathname;
+    // Pequeno delay para evitar chamadas simultâneas
+    setTimeout(() => fetchUnreadCount(), 200);
   }
 
   onMount(() => {

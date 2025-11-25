@@ -373,7 +373,7 @@
             type="button" 
             class="btn-submit" 
             on:click={completeOrder}
-            disabled={completingOrder || !completionNotes || completionNotes.trim() === '' || pieces.length === 0}
+            disabled={completingOrder || !completionNotes || completionNotes.trim() === ''}
           >
             {#if completingOrder}
               <i class="fas fa-spinner fa-spin"></i>

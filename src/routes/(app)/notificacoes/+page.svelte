@@ -3,6 +3,12 @@
   import { onMount } from "svelte";
   import { NotificationsApi } from "$lib/api/notifications";
   import { feedback } from '$lib/stores/feedback.stores.js';
+  import { 
+    subscribeToPush, 
+    unsubscribeFromPush, 
+    isSubscribed, 
+    isWebPushSupported 
+  } from '$lib/utils/webPush.js';
 
   // ✅ Ícones Lucide
   import {
@@ -19,15 +25,26 @@
   let loading = true;
   let notificacoes = [];
   let error = "";
+  let pushEnabled = false;
+  let pushLoading = false;
+  let webPushSupported = false;
 
   onMount(async () => {
     try {
       notificacoes = await NotificationsApi.list();
       
-      // Disparar evento para atualizar contador na navbar
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('notification-updated'));
+      // Verifica suporte para Web Push (com tratamento de erro)
+      webPushSupported = isWebPushSupported();
+      if (webPushSupported) {
+        try {
+          pushEnabled = await isSubscribed();
+        } catch (pushErr) {
+          console.warn('Erro ao verificar subscription push:', pushErr);
+          pushEnabled = false;
+        }
       }
+      
+      // Não precisa disparar evento aqui - a Navbar já atualiza quando a rota muda
     } catch (err) {
       error = "Erro ao carregar notificações.";
       console.error(err);
@@ -35,6 +52,40 @@
       loading = false;
     }
   });
+
+  async function togglePushNotifications() {
+    pushLoading = true;
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush();
+        pushEnabled = false;
+        feedback.set({
+          show: true,
+          type: 'success',
+          title: 'Sucesso',
+          message: 'Notificações push desativadas.',
+        });
+      } else {
+        await subscribeToPush();
+        pushEnabled = true;
+        feedback.set({
+          show: true,
+          type: 'success',
+          title: 'Sucesso',
+          message: 'Notificações push ativadas! Você receberá notificações mesmo quando o navegador estiver fechado.',
+        });
+      }
+    } catch (err) {
+      feedback.set({
+        show: true,
+        type: 'error',
+        title: 'Erro',
+        message: err?.message || 'Erro ao alterar configurações de notificações push.',
+      });
+    } finally {
+      pushLoading = false;
+    }
+  }
 
   async function marcarComoLida(id) {
     try {
@@ -151,6 +202,23 @@
         <p class="page-subtitle">Gerencie suas notificações e alertas</p>
       </div>
       <div class="header-actions">
+        {#if webPushSupported}
+          <button 
+            class="btn-secondary {pushEnabled ? 'active' : ''}" 
+            on:click={togglePushNotifications}
+            disabled={pushLoading}
+            title={pushEnabled ? 'Desativar notificações push' : 'Ativar notificações push'}
+          >
+            {#if pushLoading}
+              <Loader2 class="spin" size={18} />
+            {:else if pushEnabled}
+              <Bell size={18} />
+            {:else}
+              <BellOff size={18} />
+            {/if}
+            {pushEnabled ? 'Push Ativo' : 'Ativar Push'}
+          </button>
+        {/if}
         {#if notificacoes.filter(n => !n.read).length > 0}
           <button class="btn-secondary" on:click={marcarTodasLidas}>
             <CheckCheck size={18} />
