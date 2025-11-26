@@ -21,6 +21,7 @@
   let selectedQuantity = 1;
   let loadingPieces = false;
   let completingOrder = false;
+  let showConfirmationModal = false;
 
   onMount(async () => {
     try {
@@ -148,7 +149,7 @@
     pieces = pieces.filter((_, i) => i !== index);
   }
 
-  async function completeOrder() {
+  function showConfirmation() {
     if (!completionNotes || completionNotes.trim() === '') {
       feedback.set({
         show: true,
@@ -158,9 +159,17 @@
       });
       return;
     }
+    showConfirmationModal = true;
+  }
 
+  function closeConfirmation() {
+    showConfirmationModal = false;
+  }
+
+  async function confirmCompleteOrder() {
     try {
       completingOrder = true;
+      showConfirmationModal = false;
       
       const payload = {
         orderId: id,
@@ -372,7 +381,7 @@
           <button 
             type="button" 
             class="btn-submit" 
-            on:click={completeOrder}
+            on:click={showConfirmation}
             disabled={completingOrder || !completionNotes || completionNotes.trim() === ''}
           >
             {#if completingOrder}
@@ -381,6 +390,119 @@
             {:else}
               <i class="fas fa-check"></i>
               <span>Concluir Ordem</span>
+            {/if}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Modal de Confirmação -->
+  {#if showConfirmationModal}
+    <div class="modal-overlay" on:click={closeConfirmation} on:keydown={(e) => e.key === 'Escape' && closeConfirmation()}>
+      <div class="modal-content" on:click|stopPropagation>
+        <div class="modal-header">
+          <h2 class="modal-title">
+            <i class="fas fa-check-circle"></i>
+            Confirmar Conclusão da Ordem
+          </h2>
+          <button class="modal-close" on:click={closeConfirmation} disabled={completingOrder}>
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="confirmation-section">
+            <h3 class="confirmation-section-title">
+              <i class="fas fa-info-circle"></i>
+              Dados que serão enviados:
+            </h3>
+
+            <!-- Informações da Ordem -->
+            <div class="confirmation-item">
+              <div class="confirmation-label">
+                <i class="fas fa-clipboard-list"></i>
+                Ordem de Serviço:
+              </div>
+              <div class="confirmation-value">
+                <strong>{ordem?.title || 'N/A'}</strong>
+                <span class="confirmation-subtext">Equipamento: {ordem?.machine?.name || 'N/A'}</span>
+              </div>
+            </div>
+
+            <!-- Notas de Conclusão -->
+            <div class="confirmation-item">
+              <div class="confirmation-label">
+                <i class="fas fa-sticky-note"></i>
+                Notas de Conclusão:
+              </div>
+              <div class="confirmation-value">
+                <div class="notes-preview">{completionNotes || 'N/A'}</div>
+              </div>
+            </div>
+
+            <!-- Peças Utilizadas -->
+            <div class="confirmation-item">
+              <div class="confirmation-label">
+                <i class="fas fa-cog"></i>
+                Peças Utilizadas:
+              </div>
+              <div class="confirmation-value">
+                {#if pieces.length > 0}
+                  <div class="pieces-confirmation-list">
+                    {#each pieces as piece}
+                      <div class="piece-confirmation-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span><strong>{piece.pieceName}</strong> ({piece.pieceCode})</span>
+                        <span class="piece-quantity-badge">Qtd: {piece.quantity}</span>
+                      </div>
+                    {/each}
+                  </div>
+                {:else}
+                  <span class="no-pieces">Nenhuma peça foi adicionada</span>
+                {/if}
+              </div>
+            </div>
+          </div>
+
+          {#if pieces.length > 0}
+            <div class="confirmation-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+              <div>
+                <strong>Atenção:</strong> Você adicionou {pieces.length} peça(s) a esta ordem. 
+                Ao confirmar, essas peças serão registradas no histórico e o estoque será atualizado.
+              </div>
+            </div>
+          {/if}
+
+          <div class="confirmation-question">
+            <i class="fas fa-question-circle"></i>
+            <span>Deseja realmente concluir esta ordem de serviço?</span>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button 
+            type="button" 
+            class="btn-modal-cancel" 
+            on:click={closeConfirmation}
+            disabled={completingOrder}
+          >
+            <i class="fas fa-times"></i>
+            Cancelar
+          </button>
+          <button 
+            type="button" 
+            class="btn-modal-confirm" 
+            on:click={confirmCompleteOrder}
+            disabled={completingOrder}
+          >
+            {#if completingOrder}
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Concluindo...</span>
+            {:else}
+              <i class="fas fa-check"></i>
+              <span>Sim, Concluir Ordem</span>
             {/if}
           </button>
         </div>
@@ -595,6 +717,323 @@
 
     .form-col-quantity {
       width: 100%;
+    }
+  }
+
+  /* Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 16px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 2px solid #e2e8f0;
+  }
+
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+
+  .modal-title i {
+    color: #3b82f6;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .modal-close:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+
+  .modal-close:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+  }
+
+  .confirmation-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .confirmation-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 1rem 0;
+  }
+
+  .confirmation-section-title i {
+    color: #3b82f6;
+  }
+
+  .confirmation-item {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .confirmation-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .confirmation-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+  }
+
+  .confirmation-label i {
+    color: #3b82f6;
+  }
+
+  .confirmation-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+  }
+
+  .confirmation-value strong {
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  .confirmation-subtext {
+    display: block;
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+  }
+
+  .notes-preview {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    white-space: pre-wrap;
+    max-height: 150px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+
+  .pieces-confirmation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .piece-confirmation-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+
+  .piece-confirmation-item i {
+    color: #10b981;
+    font-size: 1rem;
+  }
+
+  .piece-quantity-badge {
+    margin-left: auto;
+    background: #3b82f6;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .no-pieces {
+    color: #94a3b8;
+    font-style: italic;
+  }
+
+  .confirmation-warning {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fef3c7;
+    border: 2px solid #fbbf24;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+
+  .confirmation-warning i {
+    color: #d97706;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  .confirmation-warning div {
+    color: #92400e;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .confirmation-warning strong {
+    font-weight: 700;
+  }
+
+  .confirmation-question {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: #eff6ff;
+    border: 2px solid #3b82f6;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e40af;
+    margin-top: 1.5rem;
+  }
+
+  .confirmation-question i {
+    color: #3b82f6;
+    font-size: 1.25rem;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 2px solid #e2e8f0;
+    justify-content: flex-end;
+  }
+
+  .btn-modal-cancel,
+  .btn-modal-confirm {
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .btn-modal-cancel {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  .btn-modal-cancel:hover:not(:disabled) {
+    background: #e2e8f0;
+    color: #475569;
+  }
+
+  .btn-modal-confirm {
+    background: #10b981;
+    color: white;
+  }
+
+  .btn-modal-confirm:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-modal-cancel:disabled,
+  .btn-modal-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    .modal-content {
+      max-height: 95vh;
+    }
+
+    .modal-footer {
+      flex-direction: column;
+    }
+
+    .btn-modal-cancel,
+    .btn-modal-confirm {
+      width: 100%;
+      justify-content: center;
     }
   }
 </style>

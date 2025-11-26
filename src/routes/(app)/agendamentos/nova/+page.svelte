@@ -45,12 +45,13 @@
     loading = true;
     error = '';
 
-    if (!form.machineId || !form.userId || !form.date) {
+    // Validação de campos obrigatórios (com trim para remover espaços)
+    if (!form.machineId || !form.userId || !form.date || !form.notes || !form.notes.trim()) {
       feedback.set({
         show: true,
         type: 'error',
         title: 'Campos obrigatórios',
-        message: 'Preencha todos os campos obrigatórios.',
+        message: 'Preencha todos os campos obrigatórios (Máquina, Técnico, Data/Hora e Observações).',
       });
       loading = false;
       return;
@@ -269,17 +270,18 @@
         <div class="form-group">
           <label for="notes">
             <i class="fas fa-comment"></i>
-            Observações
+            Observações *
           </label>
           <textarea
             id="notes"
             bind:value={form.notes}
+            required
             placeholder="Descreva o tipo de manutenção, peças necessárias, observações importantes..."
             class="form-textarea"
             rows="4"
             disabled={loading}
           ></textarea>
-          <small class="form-hint">Informações adicionais sobre o agendamento</small>
+          <small class="form-hint">Informações adicionais sobre o agendamento (obrigatório)</small>
         </div>
 
         <!-- Preview -->
